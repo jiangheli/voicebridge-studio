@@ -10,7 +10,7 @@
     "build": "tsc -b && vite build",
     "build:backend:win": "powershell -ExecutionPolicy Bypass -File scripts/build-backend.ps1",
     "prepare:runtime:win": "powershell -ExecutionPolicy Bypass -File scripts/prepare-runtime.ps1",
-    "package:win": "npm run build && npm run build:backend:win && npm run prepare:runtime:win && electron-builder --win nsis",
+    "package:win": "npm run build && npm run build:backend:win && npm run prepare:runtime:win && electron-builder --win nsis --publish never",
     "preview": "vite preview",
     "test:api": "python -m pytest server -q"
   },
