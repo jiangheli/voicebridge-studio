@@ -1,7 +1,7 @@
 {
   "name": "voicebridge-studio",
   "private": true,
-  "version": "0.4.0",
+  "version": "0.5.0",
   "type": "module",
   "main": "desktop/main.cjs",
   "scripts": {
@@ -12,7 +12,8 @@
     "prepare:runtime:win": "powershell -ExecutionPolicy Bypass -File scripts/prepare-runtime.ps1",
     "package:win": "npm run build && npm run build:backend:win && npm run prepare:runtime:win && electron-builder --win nsis --publish never",
     "preview": "vite preview",
-    "test:api": "python -m pytest server -q"
+    "test:api": "python -m pytest server -q",
+    "test:desktop": "node --test desktop/test-local-gpu.cjs"
   },
   "dependencies": {
     "@fontsource/dm-mono": "^5.3.0",
@@ -63,6 +64,15 @@
         "to": "runtime",
         "filter": [
           "**/*"
+        ]
+      },
+      {
+        "from": "services/seamless-sidecar",
+        "to": "sidecar",
+        "filter": [
+          "Dockerfile",
+          "requirements.txt",
+          "app.py"
         ]
       }
     ],

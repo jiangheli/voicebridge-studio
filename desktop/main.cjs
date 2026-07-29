@@ -2,6 +2,12 @@ const { app, BrowserWindow, dialog, ipcMain, shell } = require("electron");
 const { spawn } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
+const {
+  prerequisiteCommands,
+  probeLocalGpu,
+  startLocalGpu,
+  stopLocalGpu,
+} = require("./local-gpu.cjs");
 
 const API_PORT = 8765;
 const API_BASE = `http://127.0.0.1:${API_PORT}`;
@@ -14,6 +20,26 @@ function localDataRoot() {
     return path.join(process.env.LOCALAPPDATA, "VoiceBridge");
   }
   return app.getPath("userData");
+}
+
+function sidecarResourcesRoot() {
+  return app.isPackaged
+    ? path.join(process.resourcesPath, "sidecar")
+    : path.resolve(__dirname, "..", "services", "seamless-sidecar");
+}
+
+function launchPrerequisite(kind) {
+  const command = prerequisiteCommands[kind];
+  if (process.platform !== "win32" || !command) {
+    throw new Error("windows_prerequisite_only");
+  }
+  const child = spawn(command[0], command[1], {
+    detached: true,
+    windowsHide: true,
+    stdio: "ignore",
+  });
+  child.unref();
+  return { launched: true, kind };
 }
 
 async function apiIsReady() {
@@ -161,6 +187,24 @@ ipcMain.handle("voicebridge:open-documentation", async () => {
   const docsRoot = app.isPackaged ? process.resourcesPath : app.getAppPath();
   return shell.openPath(path.join(docsRoot, "docs", "DEVELOPMENT.md"));
 });
+
+ipcMain.handle("voicebridge:local-gpu-status", async () => probeLocalGpu());
+
+ipcMain.handle("voicebridge:install-prerequisite", async (_event, kind) => {
+  if (kind !== "wsl" && kind !== "docker") {
+    throw new Error("invalid_prerequisite");
+  }
+  return launchPrerequisite(kind);
+});
+
+ipcMain.handle("voicebridge:start-local-gpu", async (_event, payload) => {
+  if (!payload || typeof payload.modelPath !== "string") {
+    throw new Error("invalid_local_gpu_request");
+  }
+  return startLocalGpu(payload.modelPath, sidecarResourcesRoot());
+});
+
+ipcMain.handle("voicebridge:stop-local-gpu", async () => stopLocalGpu());
 
 app.whenReady().then(() => {
   if (hasSingleInstanceLock) return createWindow();

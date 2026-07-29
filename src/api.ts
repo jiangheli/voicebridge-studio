@@ -72,6 +72,26 @@ export interface DesktopMediaFile {
   extension: string;
 }
 
+export interface LocalGpuStatus {
+  supported: boolean;
+  nvidia_ready: boolean;
+  gpu_name: string | null;
+  wsl_ready: boolean;
+  docker_ready: boolean;
+  image_ready: boolean;
+  container_state: string;
+  service_online: boolean;
+  model_ready: boolean;
+  cuda_ready: boolean;
+  detail: string;
+}
+
+export interface LocalGpuStartResult {
+  ok: boolean;
+  service_base: string;
+  gpu_name: string | null;
+}
+
 export interface RuntimeStatus {
   platform: string;
   architecture: string;
@@ -94,6 +114,12 @@ declare global {
       chooseMediaFile: () => Promise<DesktopMediaFile | null>;
       openPath: (path: string) => Promise<string>;
       openDocumentation: () => Promise<string>;
+      localGpuStatus: () => Promise<LocalGpuStatus>;
+      installPrerequisite: (
+        kind: "wsl" | "docker",
+      ) => Promise<{ launched: boolean; kind: string }>;
+      startLocalGpu: (modelPath: string) => Promise<LocalGpuStartResult>;
+      stopLocalGpu: () => Promise<{ ok: boolean }>;
     };
   }
 }

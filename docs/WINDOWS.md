@@ -7,12 +7,15 @@ VoiceBridge Studio.exe（Electron）
 ├── React Renderer
 │   └── 只通过 HTTP 与 preload 白名单能力通信
 ├── voicebridge-api.exe（FastAPI / 127.0.0.1:8765）
-└── voicebridge-api.exe download-worker（仅下载期间存在）
+├── voicebridge-api.exe download-worker（仅下载期间存在）
+└── Docker Desktop / WSL2 sidecar（仅启用本机 GPU 时）
 ```
 
 安装包还会在 `resources/runtime/` 携带经过 SHA-256 校验的 Windows x64 LGPL shared FFmpeg 及其 DLL。版本、哈希和对应源码记录在 `THIRD_PARTY_NOTICES.md`。目标电脑无需安装 Node、Python、Git、FFmpeg 或模型下载 CLI。
 
-Electron 不加载模型，也不执行音频推理。桌面壳只负责窗口生命周期、选择目录、打开本地路径和启动/停止 API。
+Electron 不直接加载模型。桌面壳负责窗口生命周期、白名单文件操作、本地
+API，以及本机 sidecar 的环境检测、构建、启动和停止。所有系统命令使用
+固定可执行文件与参数数组，不经过 shell 拼接用户路径。
 
 ## 2. 源码目录
 
@@ -59,12 +62,13 @@ npm run package:win
 
 1. TypeScript 检查和 Vite 生产构建；
 2. PyInstaller 将 FastAPI、Hugging Face Hub 客户端与模型清单打成单文件 EXE；
-3. electron-builder 将 UI、Electron 壳和后端 EXE 写入 NSIS 安装包。
+3. SeamlessExpressive sidecar 的 Dockerfile、服务代码和固定依赖清单进入 resources；
+4. electron-builder 将 UI、Electron 壳和后端 EXE 写入 NSIS 安装包。
 
 结果：
 
 ```text
-release\VoiceBridge-Studio-0.4.0-Windows-x64.exe
+release\VoiceBridge-Studio-0.5.0-Windows-x64.exe
 ```
 
 安装器允许修改程序安装目录。模型不在程序目录内，升级或卸载程序不会自动删除模型目录。
@@ -86,7 +90,28 @@ release\VoiceBridge-Studio-0.4.0-Windows-x64.exe
 - 升级 GUI 不需要重新下载权重；
 - 下载中断后 cache 仍然可用。
 
-## 6. 干净 Windows 验收
+## 6. 本机 NVIDIA GPU
+
+在“模型与运行 → 在这台 Windows 电脑运行”中依次完成：
+
+1. 安装或引入 SeamlessExpressive checkpoint；
+2. 检查兼容的 NVIDIA Windows 驱动；
+3. 由 GUI 请求启用 WSL2，按系统提示重启；
+4. 由 GUI 调用 Windows Package Manager 安装 Docker Desktop；
+5. 启动 Docker Desktop 并切换为 WSL2 Linux containers；
+6. 点击“启动本机 GPU 服务”。
+
+首次启动会从 EXE resources 构建固定的
+`voicebridge-seamless-sidecar:0.5.0` 镜像。容器只绑定
+`127.0.0.1:8787`，并将 Windows checkpoint 目录只读挂载到
+`/models/SeamlessExpressive`。容器使用 `--restart unless-stopped`，
+Docker Desktop 重启后可恢复服务。
+
+WSL2 和 Docker Desktop 是系统级能力，安装时需要用户确认管理员窗口，
+部分机器需要重启。EXE 不静默安装显卡驱动，也不绕过 Docker Desktop 的
+许可条款。
+
+## 7. 干净 Windows 验收
 
 支持目标：
 
@@ -97,15 +122,19 @@ release\VoiceBridge-Studio-0.4.0-Windows-x64.exe
 - 可通过 GUI 下载模型或引入已有仓库；
 - 没有 NVIDIA GPU/驱动时进入 CPU 模式；
 - 有兼容 NVIDIA 驱动时显示 GPU 候选模式。
+- WSL2 / Docker 缺失时提供对应安装动作，不误报 sidecar 已就绪；
+- 本机 sidecar 启动后快速直译自动改用 `http://127.0.0.1:8787`；
+- 停止 sidecar 不删除镜像或 checkpoint。
 
 应用不能打包或替代显卡驱动。GPU 推理依赖系统已有 NVIDIA 驱动；CUDA Toolkit 本身不要求用户单独安装，后续推理运行时应携带所需 CUDA DLL。
 
-## 7. 发布前检查
+## 8. 发布前检查
 
 ```powershell
 npm run build
 npm run test:api
 node --check desktop/main.cjs
+npm run test:desktop
 npm run package:win
 ```
 

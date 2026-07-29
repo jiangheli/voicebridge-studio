@@ -279,7 +279,7 @@ function App() {
               else setNotice("开发文档位于项目 docs/DEVELOPMENT.md");
             }}
           ><FileIcon />开发文档 <ChevronIcon /></button>
-          <div className="version">WINDOWS DESKTOP · V0.4</div>
+          <div className="version">WINDOWS DESKTOP · V0.5</div>
         </div>
       </aside>
 

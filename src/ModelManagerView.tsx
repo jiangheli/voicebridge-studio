@@ -12,6 +12,7 @@ import {
   type RuntimeStatus,
 } from "./api";
 import { CheckIcon, DownloadIcon, FolderIcon, LockIcon, PauseIcon, PlayIcon, RefreshIcon } from "./icons";
+import { LocalGpuPanel } from "./LocalGpuPanel";
 
 function formatSize(bytes: number) {
   if (!bytes) return "外部配置";
@@ -228,9 +229,15 @@ export function ModelManagerView({
         ))}
       </div>
 
+      <LocalGpuPanel
+        model={models.find((model) => model.id === "seamless_expressive")}
+        onNotice={setNotice}
+        onConfigured={refresh}
+      />
+
       <div className="storage-panel">
         <div className="storage-copy">
-          <span className="section-index">03 / STORAGE</span>
+          <span className="section-index">04 / STORAGE</span>
           <h3>本地目录与翻译服务</h3>
           <p>Windows 默认写入当前用户的 Local AppData，不需要管理员权限。模型目录和缓存目录可以放到空间更大的磁盘。</p>
           {settings && <code>{settings.data_dir}\settings.json</code>}

@@ -26,7 +26,7 @@ REQUIRED_FILES = (
 
 app = FastAPI(
     title="VoiceBridge SeamlessExpressive Sidecar",
-    version="0.4.0",
+    version="0.5.0",
 )
 
 

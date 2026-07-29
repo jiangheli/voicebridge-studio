@@ -1,9 +1,9 @@
 # SeamlessExpressive Linux GPU Sidecar
 
 The official Seamless Communication runtime depends on `fairseq2`, whose
-prebuilt packages do not support Windows x64. VoiceBridge therefore keeps the
-Windows desktop app small and calls this Linux GPU service for the
-`expressive_fast` route.
+prebuilt packages do not support Windows x64. VoiceBridge runs this Linux GPU
+service either on a separate host or in Docker Desktop's WSL2 engine on the
+same Windows NVIDIA machine.
 
 ## Model directory
 
@@ -33,3 +33,7 @@ docker run --rm --gpus all -p 127.0.0.1:8787:8787 \
 For LAN deployment, bind the port deliberately and put TLS or a trusted
 reverse proxy in front of the service. Configure the Windows GUI with the
 resulting base URL and matching API key.
+
+The packaged Windows GUI embeds this directory and can build/start the same
+container from “模型与运行”. It binds only `127.0.0.1:8787` and mounts the
+downloaded checkpoint directory read-only.
