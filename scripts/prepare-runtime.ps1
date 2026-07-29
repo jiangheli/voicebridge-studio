@@ -16,7 +16,15 @@ if (-not (Test-Path $archivePath)) {
   Invoke-WebRequest -Uri $archiveUrl -OutFile $archivePath
 }
 
-$actualSha256 = (Get-FileHash -Algorithm SHA256 $archivePath).Hash.ToLowerInvariant()
+$sha256 = [System.Security.Cryptography.SHA256]::Create()
+$archiveStream = [System.IO.File]::OpenRead($archivePath)
+try {
+  $actualSha256 = ([System.BitConverter]::ToString($sha256.ComputeHash($archiveStream))).Replace("-", "").ToLowerInvariant()
+}
+finally {
+  $archiveStream.Dispose()
+  $sha256.Dispose()
+}
 if ($actualSha256 -ne $expectedSha256) {
   throw "FFmpeg checksum mismatch. Expected $expectedSha256 but received $actualSha256."
 }
