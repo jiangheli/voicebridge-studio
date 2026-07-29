@@ -1,0 +1,13 @@
+node_modules/
+dist/
+build/
+release/
+*.spec
+.playwright-cli/
+output/playwright/
+*.tsbuildinfo
+__pycache__/
+.pytest_cache/
+*.pyc
+.DS_Store
+*.local

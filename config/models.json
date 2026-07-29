@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "models": [
+    {
+      "id": "qwen3_asr",
+      "name": "Qwen3-ASR 0.6B",
+      "repo_id": "Qwen/Qwen3-ASR-0.6B",
+      "role": "中文识别与英文反识别",
+      "required": true,
+      "downloadable": true,
+      "estimated_size_bytes": 1800000000,
+      "directory_name": "Qwen3-ASR-0.6B"
+    },
+    {
+      "id": "translation_provider",
+      "name": "Translation Provider",
+      "repo_id": null,
+      "role": "可控中英翻译（OpenAI 兼容 API）",
+      "required": true,
+      "downloadable": false,
+      "estimated_size_bytes": 0,
+      "directory_name": null
+    },
+    {
+      "id": "cosyvoice3",
+      "name": "CosyVoice 3",
+      "repo_id": "FunAudioLLM/Fun-CosyVoice3-0.5B-2512",
+      "role": "主声音克隆",
+      "required": true,
+      "downloadable": true,
+      "estimated_size_bytes": 2600000000,
+      "directory_name": "Fun-CosyVoice3-0.5B-2512"
+    },
+    {
+      "id": "qwen3_tts",
+      "name": "Qwen3-TTS 1.7B Base",
+      "repo_id": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+      "role": "备用声音克隆",
+      "required": false,
+      "downloadable": true,
+      "estimated_size_bytes": 4300000000,
+      "directory_name": "Qwen3-TTS-12Hz-1.7B-Base"
+    },
+    {
+      "id": "qwen3_translation",
+      "name": "Qwen3 4B Instruct",
+      "repo_id": "Qwen/Qwen3-4B-Instruct-2507",
+      "role": "完全本地翻译（可选）",
+      "required": false,
+      "downloadable": true,
+      "estimated_size_bytes": 8200000000,
+      "directory_name": "Qwen3-4B-Instruct-2507"
+    },
+    {
+      "id": "qwen3_aligner",
+      "name": "Qwen3 ForcedAligner 0.6B",
+      "repo_id": "Qwen/Qwen3-ForcedAligner-0.6B",
+      "role": "词级时间戳与严格对齐（可选）",
+      "required": false,
+      "downloadable": true,
+      "estimated_size_bytes": 1800000000,
+      "directory_name": "Qwen3-ForcedAligner-0.6B"
+    }
+  ]
+}

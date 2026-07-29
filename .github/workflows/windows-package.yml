@@ -1,0 +1,29 @@
+name: Windows package
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main", "codex/**"]
+
+jobs:
+  package:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: npm ci
+      - run: python -m pip install pytest httpx
+      - run: npm run test:api
+      - run: npm run package:win
+      - uses: actions/upload-artifact@v4
+        with:
+          name: VoiceBridge-Windows
+          path: release/*.exe
+          if-no-files-found: error
