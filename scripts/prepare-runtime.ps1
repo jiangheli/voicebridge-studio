@@ -52,7 +52,9 @@ if ($license) {
 }
 
 $bundledFfmpeg = Join-Path $runtimeDirectory "ffmpeg.exe"
-& $bundledFfmpeg -version | Select-Object -First 1
-if ($LASTEXITCODE -ne 0) {
+$ffmpegVersionOutput = & $bundledFfmpeg -version 2>&1
+$ffmpegExitCode = $LASTEXITCODE
+$ffmpegVersionOutput | Select-Object -First 1
+if ($ffmpegExitCode -ne 0) {
   throw "Bundled FFmpeg failed its startup check."
 }
