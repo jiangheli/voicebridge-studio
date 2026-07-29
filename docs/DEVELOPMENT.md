@@ -30,6 +30,9 @@ CosyVoice 3 跨语言声音克隆
 - Qwen3-TTS 提供独立的备用声音候选；
 - 质量闸门决定候选能否进入最终时间线。
 
+另提供可选的 SeamlessExpressive 快速链路，用一步 speech-to-speech
+推理生成英文预览 WAV。它不替代需要字幕、事实复核和背景回混的可控链路。
+
 ## 2. 产品范围
 
 ### 输入
@@ -327,6 +330,8 @@ Electron Desktop
         ├── CosyVoice / Qwen3-TTS Worker
         ├── Quality Worker
         └── Render Worker
+└── SeamlessExpressive Fast Route
+    └── Linux GPU Sidecar（expressivity_predict）
 ```
 
 Electron 和 API 服务不直接加载 GPU 权重。每个推理 Worker 只读取明确配置的本地模型目录。模型下载是独立的、必须由用户点击触发的系统能力。
@@ -355,6 +360,9 @@ GET /api/v1/voice-translation/jobs/{job_id}/subtitles?format=srt&track=target
 GET /api/v1/models/readiness
 POST /api/v1/models/{model_id}/download
 POST /api/v1/models/{model_id}/pause
+GET /api/v1/expressive/status
+POST /api/v1/expressive/jobs
+GET /api/v1/expressive/jobs/{job_id}
 GET /api/v1/settings
 PATCH /api/v1/settings
 ```
@@ -377,7 +385,11 @@ PATCH /api/v1/settings
 4. Qwen3-TTS 备用候选与逐句比较；
 5. 多说话人、背景音、时间线与最终视频。
 
-当前仓库已完成不依赖权重的 Web 工作台、Windows Electron 外壳、fixture 流程、浏览器持久化、质量报告、SRT / WebVTT 字幕交付、本地配置、可暂停/续传模型下载和 NSIS 打包链路。真实推理 Worker 尚未接入。
+当前仓库已完成 Web 工作台、Windows Electron 外壳、可控链路 fixture、
+浏览器持久化、质量报告、SRT / WebVTT 字幕交付、本地配置、Hugging
+Face 与 private GitHub Release 可暂停/续传下载、SeamlessExpressive
+Linux sidecar API 适配和 NSIS 打包链路。Qwen3-ASR、CosyVoice 与背景
+回混的真实 Worker 尚未接入。
 
 ## 12. 参考资料
 

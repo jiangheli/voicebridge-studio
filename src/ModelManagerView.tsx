@@ -37,6 +37,7 @@ export function ModelManagerView({
   const [busyId, setBusyId] = useState("");
   const [notice, setNotice] = useState("");
   const [runtime, setRuntime] = useState<RuntimeStatus | null>(null);
+  const [githubToken, setGithubToken] = useState("");
 
   const refresh = useCallback(async () => {
     try {
@@ -77,7 +78,11 @@ export function ModelManagerView({
         await pauseModelDownload(model.id);
         setNotice(`${model.name} 已暂停；再次继续会复用本地缓存`);
       } else {
-        await startModelDownload(model.id);
+        await startModelDownload(
+          model.id,
+          model.auth_required ? githubToken : undefined,
+        );
+        if (model.auth_required) setGithubToken("");
         setNotice(`${model.name} 已开始下载`);
       }
       await refresh();
@@ -140,7 +145,7 @@ export function ModelManagerView({
       <div className="models-intro">
         <span className="section-index">01 / LOCAL RUNTIME</span>
         <h2>模型留在电脑里，<br />下载由你明确控制。</h2>
-        <p>可以直接下载，也可以引入磁盘中已有的完整模型仓库。启动应用不会自动拉取权重，暂停会保留 Hugging Face 缓存。</p>
+        <p>可以直接下载，也可以引入磁盘中已有的完整模型仓库。启动应用不会自动拉取权重；暂停保留缓存，私有仓库 token 只在本次下载进程内使用。</p>
         <div className="runtime-summary">
           <span><strong>{models.filter((item) => item.required && item.configured).length}/{models.filter((item) => item.required).length}</strong><small>必需项就绪</small></span>
           <span><strong>{models.filter((item) => item.state === "installed").length}</strong><small>本地模型</small></span>
@@ -158,12 +163,34 @@ export function ModelManagerView({
       <div className="model-list">
         {models.map((model, index) => (
           <article className="model-row installable" key={model.id}>
+            {model.auth_required && (
+              <form
+                id={`model-download-${model.id}`}
+                className="model-download-form"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void perform(model, "download");
+                }}
+              />
+            )}
             <span className="model-number">{String(index + 1).padStart(2, "0")}</span>
             <div className="model-identity">
               <span className="model-badges">{model.required ? <b>必需</b> : <b className="optional">可选</b>}<em>{formatSize(model.estimated_size_bytes)}</em></span>
               <strong>{model.name}</strong>
               <small>{model.role}</small>
-              {model.repo_id && <code>{model.repo_id}</code>}
+              {model.repo_id && <code>{model.repo_id} · {model.source_label}</code>}
+              {model.auth_required && !model.configured && (
+                <input
+                  className="model-token-input"
+                  type="password"
+                  form={`model-download-${model.id}`}
+                  autoComplete="off"
+                  aria-label="GitHub 私有仓库访问令牌"
+                  placeholder="GitHub token · 仅本次下载使用"
+                  value={githubToken}
+                  onChange={(event) => setGithubToken(event.target.value)}
+                />
+              )}
             </div>
             <div className="model-progress-cell">
               <span className={`model-state ${model.configured ? "ready" : model.state}`}><i />{stateLabel(model)}</span>
@@ -184,7 +211,13 @@ export function ModelManagerView({
                 <button className="secondary" disabled={busyId === model.id} onClick={() => void perform(model, "pause")}><PauseIcon />暂停</button>
               ) : (
                 <div className="model-button-group">
-                  <button className="primary" disabled={busyId === model.id} onClick={() => void perform(model, "download")}>
+                  <button
+                    className="primary"
+                    type={model.auth_required ? "submit" : "button"}
+                    form={model.auth_required ? `model-download-${model.id}` : undefined}
+                    disabled={busyId === model.id || (model.auth_required && !githubToken)}
+                    onClick={model.auth_required ? undefined : () => void perform(model, "download")}
+                  >
                     {model.state === "paused" ? <PlayIcon /> : <DownloadIcon />}{model.state === "paused" ? "继续" : "安装"}
                   </button>
                   {window.voiceBridge && <button className="secondary import-button" disabled={busyId === model.id} onClick={() => void importRepository(model)}><FolderIcon />引入</button>}
@@ -222,6 +255,14 @@ export function ModelManagerView({
           <label>
             <span>API Key（仅存本机）</span>
             <div><input type="password" autoComplete="off" placeholder="可留空" value={draft.translation_api_key ?? ""} onChange={(event) => setDraft((current) => ({ ...current, translation_api_key: event.target.value }))} /></div>
+          </label>
+          <label>
+            <span>SeamlessExpressive Sidecar 地址</span>
+            <div><input placeholder="http://127.0.0.1:8787" value={draft.seamless_api_base ?? ""} onChange={(event) => setDraft((current) => ({ ...current, seamless_api_base: event.target.value }))} /></div>
+          </label>
+          <label>
+            <span>Sidecar API Key（仅存本机）</span>
+            <div><input type="password" autoComplete="off" placeholder="可留空" value={draft.seamless_api_key ?? ""} onChange={(event) => setDraft((current) => ({ ...current, seamless_api_key: event.target.value }))} /></div>
           </label>
           <button className="primary save-settings" type="submit" disabled={busyId === "settings"}><CheckIcon />保存本地配置</button>
         </form>

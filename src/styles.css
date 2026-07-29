@@ -160,6 +160,8 @@ main { min-width: 0; }
 .model-state.failed { color: var(--danger); }.model-state.failed i { background: var(--danger); }
 .model-badges { display: flex; gap: 7px; align-items: center; margin-bottom: 8px; }.model-badges b, .model-badges em { padding: 3px 5px; border: 1px solid #5c6b38; color: var(--acid); font: 7px "DM Mono"; font-style: normal; text-transform: uppercase; }.model-badges b.optional { border-color: #343b3c; color: #828b8c; }.model-badges em { border: 0; color: #596263; }
 .model-identity code { display: block; margin-top: 8px; }
+.model-token-input { width: min(330px, 100%); height: 34px; margin-top: 10px; padding: 0 10px; border: 1px solid #4a4935; outline: 0; color: #e3e7d9; background: #15150f; font: 9px "DM Mono"; }.model-token-input:focus { border-color: var(--acid); }
+.model-download-form { display: none; }
 .model-progress-cell { display: grid; gap: 10px; }.download-track { width: 100%; height: 2px; overflow: hidden; background: #292f30; }.download-track i { display: block; height: 100%; background: var(--blue); transition: width .25s ease; }
 .download-error { color: var(--danger) !important; }.model-action { display: flex; justify-content: flex-end; }.model-action button { min-width: 104px; }
 .model-button-group { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }.model-button-group .import-button { min-width: 70px; }.model-button-group .compact-button { min-width: auto; padding: 7px; font-size: 8px; }
@@ -171,6 +173,32 @@ main { min-width: 0; }
 .settings-form label button { display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; border: 1px solid #303637; border-left: 0; color: #abb3b2; background: #1c2021; cursor: pointer; font-size: 9px; }.settings-form label button svg { width: 13px; }
 .save-settings { justify-self: end; margin-top: 7px; }
 .integration-note { margin-top: 34px; padding: 20px; display: grid; grid-template-columns: 28px 1fr auto; gap: 14px; align-items: center; border: 1px solid #343c31; background: #111610; }.integration-note > svg { color: var(--acid); }.integration-note strong { font-size: 11px; }.integration-note p { margin: 5px 0 0; color: #788176; font-size: 10px; }.integration-note a { color: var(--acid); text-decoration: none; display: flex; align-items: center; font-size: 10px; }.integration-note a svg { width: 13px; }
+.expressive-view { max-width: 1450px; margin: auto; padding: 0 54px 54px; }
+.expressive-intro { min-height: 430px; margin: 0 -54px; padding: 58px max(6vw, 54px); display: grid; grid-template-columns: minmax(0, .95fr) minmax(360px, 1.05fr); gap: 38px; align-items: center; overflow: hidden; border-bottom: 1px solid var(--line); background: radial-gradient(circle at 76% 45%, rgba(120,185,255,.11), transparent 36%), #0c0f11; }
+.expressive-intro h2 { margin: 18px 0; font-size: clamp(50px, 5vw, 72px); line-height: .96; letter-spacing: -.065em; font-weight: 500; }
+.expressive-intro p { max-width: 560px; color: #929b9b; font-size: 14px; line-height: 1.8; }
+.expressive-actions { display: flex; gap: 9px; margin-top: 27px; }
+.expressive-signal { height: 260px; display: grid; grid-template-columns: 78px 1fr 78px; align-items: center; gap: 18px; }
+.expressive-signal > span { width: 78px; height: 78px; display: grid; place-items: center; border: 1px solid #5e6969; border-radius: 50%; background: #101416; color: #c7ceca; font: 11px "DM Mono"; }
+.expressive-signal > span:last-child { border-color: #7392a9; color: var(--blue); box-shadow: 0 0 45px rgba(120,185,255,.09); }
+.expressive-signal > i { position: relative; height: 1px; background: linear-gradient(90deg, #485050, var(--blue)); }
+.expressive-signal > i::before, .expressive-signal > i::after { content: ""; position: absolute; inset: -26px 0; background: repeating-linear-gradient(90deg, transparent 0 8px, rgba(120,185,255,.34) 8px 10px, transparent 10px 16px); clip-path: polygon(0 47%, 7% 35%, 14% 62%, 22% 28%, 30% 70%, 39% 39%, 47% 55%, 56% 22%, 65% 73%, 74% 41%, 82% 58%, 91% 32%, 100% 50%, 100% 52%, 0 52%); animation: signal-shift 2.4s linear infinite; }
+.expressive-signal > i::after { opacity: .35; transform: scaleY(.55); animation-direction: reverse; }
+.expressive-status { display: grid; grid-template-columns: repeat(3, 1fr) auto; align-items: stretch; margin-top: 34px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.expressive-status > span { min-height: 72px; padding: 17px 22px 15px 0; margin-right: 22px; border-right: 1px solid var(--line); color: #667071; font: 8px "DM Mono"; text-transform: uppercase; }
+.expressive-status > span > i { display: inline-block; width: 6px; height: 6px; margin-right: 7px; border-radius: 50%; background: #596162; }
+.expressive-status > span.ready > i { background: var(--acid); box-shadow: 0 0 8px #d7ff6466; }
+.expressive-status > span strong { display: block; margin-top: 8px; color: #a7afad; font: 10px "Manrope"; text-transform: none; }
+.expressive-status > span.ready strong { color: #d8ded4; }
+.expressive-status > button { align-self: center; white-space: nowrap; }
+.expressive-flow { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 48px; border-top: 1px solid var(--line); }
+.expressive-flow > div { position: relative; min-height: 126px; padding: 24px 28px 20px 0; border-right: 1px solid var(--line); }
+.expressive-flow > div:last-child { border-right: 0; padding-left: 28px; }.expressive-flow > div:nth-child(2) { padding-left: 28px; }
+.expressive-flow span { color: var(--blue); font: 9px "DM Mono"; }.expressive-flow strong { display: block; margin-top: 20px; font-size: 15px; }.expressive-flow small { display: block; margin-top: 7px; color: #697273; font-size: 10px; }
+.expressive-job { min-height: 210px; padding: 38px; display: grid; grid-template-columns: 1fr minmax(290px, .5fr); gap: 50px; align-items: center; border: 1px solid #2c3335; background: #0e1112; }
+.expressive-job-copy h3 { margin: 13px 0 7px; font-size: 24px; font-weight: 550; letter-spacing: -.035em; }.expressive-job-copy p { color: #879090; font: 9px "DM Mono"; }.expressive-job-copy > small { display: block; max-width: 660px; margin-top: 22px; color: #6e7777; font-size: 10px; line-height: 1.7; }
+.expressive-job-action { display: flex; justify-content: flex-end; }.expressive-job-action > .primary { min-width: 190px; }
+.expressive-result { width: 100%; display: grid; gap: 12px; }.expressive-result > span { display: flex; align-items: center; gap: 8px; color: var(--blue); font-size: 11px; }.expressive-result > span > i { width: 11px; height: 11px; border: 1px solid #52606b; border-top-color: var(--blue); border-radius: 50%; animation: spin .8s linear infinite; }.expressive-result > span svg { width: 14px; color: var(--acid); }.expressive-result > strong { color: #dce1da; font: 24px "DM Mono"; }.expressive-result > div { height: 2px; overflow: hidden; background: #2b3132; }.expressive-result > div i { display: block; height: 100%; background: var(--blue); transition: width .3s ease; }.expressive-result.completed > div i { background: var(--acid); }.expressive-result.failed > span, .expressive-result.failed > small { color: var(--danger); }.expressive-result > small { color: #879090; font: 9px "DM Mono"; overflow-wrap: anywhere; }
 .jobs-view { max-width: 1280px; margin: auto; padding: 54px; }
 .jobs-heading { display: flex; justify-content: space-between; gap: 40px; align-items: flex-end; padding: 24px 0 42px; border-bottom: 1px solid var(--line); }
 .jobs-heading h2 { margin: 12px 0 8px; font-size: clamp(31px, 4vw, 56px); font-weight: 500; letter-spacing: -.05em; }.jobs-heading p { margin: 0; color: #747d7d; font-size: 11px; }
@@ -187,6 +215,7 @@ main { min-width: 0; }
 @keyframes toast-in { from { opacity: 0; transform: translateY(-6px); } }
 @keyframes breathe { to { transform: scaleY(.55); opacity: .35; } }
 @keyframes wave-pulse { to { transform: scaleY(.65); background: #7e944d; } }
+@keyframes signal-shift { to { transform: translateX(16px); } }
 
 @media (max-width: 1050px) {
   .pipeline { grid-template-columns: repeat(5, 1fr); row-gap: 22px; }
@@ -195,6 +224,7 @@ main { min-width: 0; }
   .dropzone { grid-template-columns: 1fr; }.visualizer { display: none; }
   .media-source { grid-template-columns: 1fr; gap: 24px; }
   .jobs-table-head, .job-row { grid-template-columns: minmax(250px, 1fr) 110px 80px 18px; }.jobs-table-head span:nth-child(4), .job-date { display: none; }
+  .expressive-intro { grid-template-columns: 1fr; }.expressive-signal { display: none; }.expressive-status { grid-template-columns: repeat(3, 1fr); }.expressive-status > button { grid-column: 1 / -1; justify-self: start; }.expressive-job { grid-template-columns: 1fr; }.expressive-job-action { justify-content: flex-start; }
 }
 @media (max-width: 720px) {
   .app-shell { display: block; }.sidebar { position: static; width: 100%; height: auto; padding: 16px; border-right: 0; border-bottom: 1px solid var(--line); }.brand { padding-bottom: 15px; }
@@ -208,6 +238,7 @@ main { min-width: 0; }
   .runtime-summary { overflow-x: auto; }.runtime-summary span { min-width: 125px; }.model-row.installable { grid-template-columns: 30px 1fr; padding: 18px 0; gap: 12px; }.model-progress-cell, .model-action { grid-column: 2; }.model-action { justify-content: flex-start; }.storage-panel { grid-template-columns: 1fr; gap: 30px; padding: 24px; }
   .media-source { margin: 0 -18px; padding: 30px 22px; }.media-copy h2 { font-size: 22px; }.media-player { min-height: 86px; }
   .jobs-view { padding: 32px 18px; }.jobs-heading { display: grid; align-items: start; }.jobs-heading h2 { font-size: 36px; }.jobs-table-head { display: none; }.job-row { grid-template-columns: 1fr 70px 14px; gap: 12px; }.job-progress { display: none; }
+  .expressive-view { padding: 0 20px 40px; }.expressive-intro { min-height: 390px; margin: 0 -20px; padding: 45px 24px; }.expressive-intro h2 { font-size: 55px; }.expressive-actions { align-items: flex-start; flex-direction: column; }.expressive-status { grid-template-columns: 1fr; }.expressive-status > span { margin: 0; border-right: 0; border-bottom: 1px solid var(--line); }.expressive-flow { grid-template-columns: 1fr; }.expressive-flow > div, .expressive-flow > div:nth-child(2), .expressive-flow > div:last-child { min-height: 95px; padding: 20px 0; border-right: 0; border-bottom: 1px solid var(--line); }.expressive-flow strong { margin-top: 10px; }.expressive-job { padding: 24px; gap: 28px; }.expressive-job-action > .primary { width: 100%; }
   .toast { top: 138px; right: 18px; max-width: calc(100vw - 36px); }
 }
 

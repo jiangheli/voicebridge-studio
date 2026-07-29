@@ -95,3 +95,29 @@ def test_rejects_incomplete_imported_repository(tmp_path: Path) -> None:
         assert str(error) == "model_weights_incomplete"
     else:
         raise AssertionError("incomplete repository was accepted")
+
+
+def test_private_release_requires_ephemeral_token(tmp_path: Path) -> None:
+    manager = ModelManager(SettingsStore(tmp_path / "data"), sleeping_command)
+    try:
+        manager.start("seamless_expressive")
+    except ValueError as error:
+        assert str(error) == "model_token_required"
+    else:
+        raise AssertionError("private release started without a token")
+
+
+def test_imports_seamless_checkpoint_directory(tmp_path: Path) -> None:
+    manager = ModelManager(SettingsStore(tmp_path / "data"), sleeping_command)
+    repository = tmp_path / "SeamlessExpressive"
+    repository.mkdir()
+    for filename in (
+        "m2m_expressive_unity.pt",
+        "pretssel_melhifigan_wm.pt",
+        "pretssel_melhifigan_wm-16khz.pt",
+    ):
+        (repository / filename).write_bytes(b"x" * 1_000_001)
+
+    imported = manager.import_directory("seamless_expressive", str(repository))
+    assert imported["configured"] is True
+    assert imported["path_source"] == "imported"

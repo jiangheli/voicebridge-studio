@@ -2,7 +2,13 @@
 
 中文语音转英文原声配音的 Windows 桌面工作台。界面使用 React，桌面壳使用 Electron，本地 API 使用 FastAPI；模型权重不打进安装包，由用户在“模型与运行”页明确安装。
 
+系统同时提供两条路线：
+
 ```text
+快速链路
+中文语音 → SeamlessExpressive Linux GPU Sidecar → 英文表达式语音 WAV
+
+可控链路
 中文语音
 → Qwen3-ASR
 → 上下文与术语约束翻译
@@ -19,12 +25,14 @@
 - Windows Electron GUI 与本地 FastAPI 子进程；
 - 模型目录、缓存目录和翻译 API 本地配置；
 - 用户触发的模型安装、暂停与断点续传；
+- 从 `RSXLX/voicebridge-models-private` 私有 Release 安装 SeamlessExpressive 分卷，支持 Range 续传、合并哈希校验和安全解压；
+- “快速直译”独立页面和 Linux GPU SeamlessExpressive sidecar；
 - 从已有 Hugging Face / ModelScope 仓库目录直接引入模型；
 - 自带 FFmpeg，并自动检测 NVIDIA 驱动或使用 CPU 模式；
 - Windows PyInstaller 后端和 NSIS 安装包脚本；
-- `fixture_no_download` 推理流程；真实模型适配器尚未接入。
+- 可控链路仍是 `fixture_no_download`；SeamlessExpressive 快速链路已接入真实 sidecar API 合同。
 
-启动应用不会自动下载模型。点击安装后才会启动独立下载进程；暂停和退出不会删除 Hugging Face 缓存。
+启动应用不会自动下载模型。点击安装后才会启动独立下载进程；暂停和退出不会删除下载缓存。私有 GitHub token 只通过子进程环境传递，不写入本地设置、命令行参数或日志。
 
 ## 最小模型
 
@@ -34,6 +42,8 @@
 2. `FunAudioLLM/Fun-CosyVoice3-0.5B-2512`
 
 翻译 API 是第三个必需配置项，但不是模型文件。Qwen3-TTS、本地 Qwen3 翻译模型和 ForcedAligner 均为可选项。
+
+快速链路只需要 SeamlessExpressive sidecar 在线。官方 `fairseq2` 没有 Windows x64 预编译包，因此实际推理运行在 Linux GPU 服务；Windows EXE 负责媒体预处理、提交、状态轮询和结果接收。
 
 ## 本地开发
 
@@ -79,6 +89,7 @@ npm run package:win
 - [模型下载与接入](docs/MODEL_INTEGRATION.md)
 - [Windows 打包与本地目录](docs/WINDOWS.md)
 - [字幕交付规范](docs/SUBTITLES.md)
+- [SeamlessExpressive 快速链路](docs/SEAMLESS_EXPRESSIVE.md)
 
 ## 安全边界
 
@@ -87,4 +98,6 @@ npm run package:win
 - API 只监听 `127.0.0.1`；
 - 下载进程与桌面窗口、API 进程分离；
 - 原始媒体和背景轨按只读母版处理；
+- 私有仓库 token 不持久化；
+- 快速链路只返回英文语音 WAV，不冒充已完成背景回混或字幕审校；
 - 当前 fixture 结果不会冒充真实模型推理。

@@ -6,12 +6,17 @@ import sys
 import uvicorn
 
 from server.download_worker import main as download_worker_main
+from server.github_release_worker import main as github_release_worker_main
 
 
 def main() -> None:
     if len(sys.argv) > 1 and sys.argv[1] == "download-worker":
         sys.argv.pop(1)
         download_worker_main()
+        return
+    if len(sys.argv) > 1 and sys.argv[1] == "github-release-worker":
+        sys.argv.pop(1)
+        github_release_worker_main()
         return
     uvicorn.run(
         "server.app:app",

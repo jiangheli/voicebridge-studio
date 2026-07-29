@@ -60,6 +60,27 @@
       "downloadable": true,
       "estimated_size_bytes": 1800000000,
       "directory_name": "Qwen3-ForcedAligner-0.6B"
+    },
+    {
+      "id": "seamless_expressive",
+      "name": "SeamlessExpressive",
+      "repo_id": "RSXLX/voicebridge-models-private",
+      "role": "中文语音直达英文表达式语音（快速链路）",
+      "required": false,
+      "downloadable": true,
+      "estimated_size_bytes": 3808363189,
+      "directory_name": "SeamlessExpressive",
+      "source": "github_release",
+      "auth_required": true,
+      "release_tag": "seamless-expressive-2023-11-29",
+      "archive_name": "SeamlessExpressive.tar.gz",
+      "archive_sha256": "2cd92745b5f16587bd249829cf528afa455b073ac5fa5e182969953a7b255d07",
+      "part_pattern": "SeamlessExpressive.tar.gz.part-*",
+      "required_files": [
+        "m2m_expressive_unity.pt",
+        "pretssel_melhifigan_wm.pt",
+        "pretssel_melhifigan_wm-16khz.pt"
+      ]
     }
   ]
 }

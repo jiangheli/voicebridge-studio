@@ -34,6 +34,8 @@ class LocalSettings:
     cache_dir: str
     translation_api_base: str = ""
     translation_api_key: str = ""
+    seamless_api_base: str = ""
+    seamless_api_key: str = ""
     model_paths: dict[str, str] = field(default_factory=dict)
 
     @classmethod

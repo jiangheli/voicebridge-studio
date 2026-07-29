@@ -129,6 +129,27 @@ ipcMain.handle("voicebridge:choose-directory", async () => {
   return result.canceled ? null : result.filePaths[0];
 });
 
+ipcMain.handle("voicebridge:choose-media-file", async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ["openFile"],
+    filters: [
+      {
+        name: "音频与视频",
+        extensions: ["wav", "mp3", "m4a", "flac", "mp4", "mov", "mkv"],
+      },
+    ],
+  });
+  if (result.canceled || !result.filePaths[0]) return null;
+  const selected = result.filePaths[0];
+  const stats = fs.statSync(selected);
+  return {
+    path: selected,
+    name: path.basename(selected),
+    size: stats.size,
+    extension: path.extname(selected).toLowerCase(),
+  };
+});
+
 ipcMain.handle("voicebridge:open-path", async (_event, targetPath) => {
   if (typeof targetPath !== "string" || !path.isAbsolute(targetPath)) {
     return "invalid_path";

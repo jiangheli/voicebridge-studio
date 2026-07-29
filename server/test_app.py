@@ -31,6 +31,7 @@ def test_health_requires_explicit_download_action() -> None:
         "qwen3_tts",
         "qwen3_translation",
         "qwen3_aligner",
+        "seamless_expressive",
     }
     assert readiness.json()["download_allowed"] is True
     assert readiness.json()["required_ready"] is False
@@ -63,6 +64,49 @@ def test_non_downloadable_translation_provider_is_rejected() -> None:
     response = client.post("/api/v1/models/translation_provider/download")
     assert response.status_code == 409
     assert response.json()["detail"] == "model_not_downloadable"
+
+
+def test_private_release_download_requires_token() -> None:
+    response = client.post(
+        "/api/v1/models/seamless_expressive/download",
+        json={},
+    )
+    assert response.status_code == 409
+    assert response.json()["detail"] == "model_token_required"
+
+
+def test_seamless_settings_keys_are_masked() -> None:
+    updated = client.patch(
+        "/api/v1/settings",
+        json={
+            "seamless_api_base": "http://127.0.0.1:9",
+            "seamless_api_key": "sidecar-secret",
+        },
+    )
+    assert updated.status_code == 200
+    assert updated.json()["seamless_api_key"] == "••••••••"
+    loaded = client.get("/api/v1/settings")
+    assert loaded.json()["seamless_api_key"] == "••••••••"
+    assert "sidecar-secret" not in loaded.text
+    client.patch(
+        "/api/v1/settings",
+        json={"seamless_api_base": "", "seamless_api_key": ""},
+    )
+
+
+def test_expressive_route_reports_unconfigured_sidecar() -> None:
+    response = client.get("/api/v1/expressive/status")
+    assert response.status_code == 200
+    assert response.json()["mode"] == "expressive_fast"
+    assert response.json()["sidecar_online"] is False
+    assert response.json()["ready"] is False
+
+    created = client.post(
+        "/api/v1/expressive/jobs",
+        json={"source_path": "/missing.wav"},
+    )
+    assert created.status_code == 409
+    assert created.json()["detail"] == "source_media_missing"
 
 
 def test_runtime_reports_cpu_fallback_and_ffmpeg_contract() -> None:

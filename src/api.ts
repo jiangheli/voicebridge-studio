@@ -13,6 +13,8 @@ export interface ModelReadiness {
   progress: number;
   error: string | null;
   path_source: "managed" | "imported" | "environment" | "configuration" | null;
+  auth_required: boolean;
+  source_label: string;
 }
 
 export interface ReadinessResponse {
@@ -27,7 +29,47 @@ export interface LocalSettings {
   cache_dir: string;
   translation_api_base: string;
   translation_api_key: string;
+  seamless_api_base: string;
+  seamless_api_key: string;
   model_paths: Record<string, string>;
+}
+
+export interface ExpressiveStatus {
+  mode: "expressive_fast";
+  checkpoint_ready: boolean;
+  checkpoint_path: string | null;
+  sidecar_configured: boolean;
+  sidecar_online: boolean;
+  sidecar_runtime: {
+    status: string;
+    model_ready: boolean;
+    cuda_ready: boolean;
+    gpu_name: string | null;
+    target_languages: string[];
+  } | null;
+  error: string | null;
+  ready: boolean;
+  background_policy: "voice_output_only";
+}
+
+export interface ExpressiveJob {
+  id: string;
+  source_path: string;
+  source_name: string;
+  target_language: "eng";
+  state: "queued" | "processing" | "completed" | "failed";
+  progress: number;
+  output_path: string | null;
+  translated_text: string | null;
+  error: string | null;
+  background_preserved: false;
+}
+
+export interface DesktopMediaFile {
+  path: string;
+  name: string;
+  size: number;
+  extension: string;
 }
 
 export interface RuntimeStatus {
@@ -49,6 +91,7 @@ declare global {
       apiBase: string;
       platform: string;
       chooseDirectory: () => Promise<string | null>;
+      chooseMediaFile: () => Promise<DesktopMediaFile | null>;
       openPath: (path: string) => Promise<string>;
       openDocumentation: () => Promise<string>;
     };
@@ -88,10 +131,38 @@ export async function updateSettings(
   });
 }
 
-export async function startModelDownload(modelId: string): Promise<ModelReadiness> {
+export async function startModelDownload(
+  modelId: string,
+  token?: string,
+): Promise<ModelReadiness> {
   return request<ModelReadiness>(`/api/v1/models/${modelId}/download`, {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(token ? { token } : {}),
   });
+}
+
+export async function fetchExpressiveStatus(
+  signal?: AbortSignal,
+): Promise<ExpressiveStatus> {
+  return request<ExpressiveStatus>("/api/v1/expressive/status", { signal });
+}
+
+export async function createExpressiveJob(
+  sourcePath: string,
+): Promise<ExpressiveJob> {
+  return request<ExpressiveJob>("/api/v1/expressive/jobs", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ source_path: sourcePath, target_language: "eng" }),
+  });
+}
+
+export async function fetchExpressiveJob(
+  jobId: string,
+  signal?: AbortSignal,
+): Promise<ExpressiveJob> {
+  return request<ExpressiveJob>(`/api/v1/expressive/jobs/${jobId}`, { signal });
 }
 
 export async function pauseModelDownload(modelId: string): Promise<ModelReadiness> {

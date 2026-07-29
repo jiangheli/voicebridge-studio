@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
+from server.expressive import ExpressiveService
 from server.local_config import SettingsStore
 from server.model_manager import ModelManager
 from server.runtime import runtime_status
@@ -81,15 +82,27 @@ class PatchSettingsRequest(BaseModel):
     cache_dir: str | None = None
     translation_api_base: str | None = None
     translation_api_key: str | None = None
+    seamless_api_base: str | None = None
+    seamless_api_key: str | None = None
+
+
+class DownloadModelRequest(BaseModel):
+    token: str | None = None
 
 
 class ImportModelRequest(BaseModel):
     path: str = Field(min_length=1)
 
 
+class CreateExpressiveJobRequest(BaseModel):
+    source_path: str = Field(min_length=1)
+    target_language: Literal["eng"] = "eng"
+
+
 JOBS: dict[str, Job] = {}
 SETTINGS = SettingsStore()
 MODEL_MANAGER = ModelManager(SETTINGS)
+EXPRESSIVE_SERVICE = ExpressiveService(SETTINGS, MODEL_MANAGER)
 
 
 def fixture_segments(job_id: str) -> list[Segment]:
@@ -139,7 +152,7 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(
     title="VoiceBridge API",
-    version="0.3.0",
+    version="0.4.0",
     description="Local Windows desktop API with explicit, resumable model installation.",
     lifespan=lifespan,
 )
@@ -182,7 +195,8 @@ def get_runtime_status() -> dict[str, object]:
 @app.get("/api/v1/settings")
 def get_settings() -> dict[str, object]:
     settings = asdict(SETTINGS.load())
-    settings["translation_api_key"] = "••••••••" if settings["translation_api_key"] else ""
+    for key in ("translation_api_key", "seamless_api_key"):
+        settings[key] = "••••••••" if settings[key] else ""
     return settings
 
 
@@ -193,20 +207,26 @@ def patch_settings(request: PatchSettingsRequest) -> dict[str, object]:
         "models_dir" in updates or "cache_dir" in updates
     ):
         raise HTTPException(status_code=409, detail="pause_downloads_before_changing_paths")
-    if updates.get("translation_api_key") == "••••••••":
-        updates.pop("translation_api_key")
+    for key in ("translation_api_key", "seamless_api_key"):
+        if updates.get(key) == "••••••••":
+            updates.pop(key)
     settings = asdict(SETTINGS.update(**updates))
-    settings["translation_api_key"] = "••••••••" if settings["translation_api_key"] else ""
+    for key in ("translation_api_key", "seamless_api_key"):
+        settings[key] = "••••••••" if settings[key] else ""
     return settings
 
 
-def model_action(model_id: str, action: Literal["start", "pause"]) -> dict[str, object]:
+def model_action(
+    model_id: str,
+    action: Literal["start", "pause"],
+    token: str | None = None,
+) -> dict[str, object]:
     if os.getenv("MODEL_DOWNLOAD_DISABLED", "0") == "1":
         raise HTTPException(status_code=403, detail="model_download_disabled")
     try:
         if action == "pause":
             return MODEL_MANAGER.pause(model_id)
-        return MODEL_MANAGER.start(model_id)
+        return MODEL_MANAGER.start(model_id, token)
     except KeyError as error:
         raise HTTPException(status_code=404, detail="model_not_found") from error
     except ValueError as error:
@@ -214,8 +234,10 @@ def model_action(model_id: str, action: Literal["start", "pause"]) -> dict[str, 
 
 
 @app.post("/api/v1/models/{model_id}/download")
-def download_model(model_id: str) -> dict[str, object]:
-    return model_action(model_id, "start")
+def download_model(
+    model_id: str, request: DownloadModelRequest | None = None
+) -> dict[str, object]:
+    return model_action(model_id, "start", request.token if request else None)
 
 
 @app.post("/api/v1/models/{model_id}/pause")
@@ -241,6 +263,31 @@ def unlink_model(model_id: str) -> dict[str, object]:
         raise HTTPException(status_code=404, detail="model_not_found") from error
     except ValueError as error:
         raise HTTPException(status_code=409, detail=str(error)) from error
+
+
+@app.get("/api/v1/expressive/status")
+def expressive_status() -> dict[str, object]:
+    return EXPRESSIVE_SERVICE.status()
+
+
+@app.post("/api/v1/expressive/jobs", status_code=202)
+def create_expressive_job(
+    request: CreateExpressiveJobRequest,
+) -> dict[str, object]:
+    try:
+        return EXPRESSIVE_SERVICE.start(
+            request.source_path, request.target_language
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+
+
+@app.get("/api/v1/expressive/jobs/{job_id}")
+def get_expressive_job(job_id: str) -> dict[str, object]:
+    try:
+        return EXPRESSIVE_SERVICE.get(job_id)
+    except KeyError as error:
+        raise HTTPException(status_code=404, detail="job_not_found") from error
 
 
 @app.post("/api/v1/voice-translation/jobs", response_model=Job, status_code=201)

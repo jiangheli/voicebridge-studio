@@ -27,6 +27,13 @@ class ModelDefinition:
     downloadable: bool
     estimated_size_bytes: int
     directory_name: str | None
+    source: str = "huggingface"
+    auth_required: bool = False
+    release_tag: str | None = None
+    archive_name: str | None = None
+    archive_sha256: str | None = None
+    part_pattern: str | None = None
+    required_files: list[str] | None = None
 
 
 @dataclass
@@ -50,13 +57,44 @@ def load_catalog() -> list[ModelDefinition]:
 def default_command(model: ModelDefinition, target: Path, cache: Path) -> list[str]:
     if not model.repo_id:
         raise ValueError("model_has_no_repository")
-    prefix = (
-        [sys.executable, "download-worker"]
+    worker = (
+        [sys.executable, "github-release-worker"]
+        if model.source == "github_release" and getattr(sys, "frozen", False)
+        else [sys.executable, "-m", "server.github_release_worker"]
+        if model.source == "github_release"
+        else [sys.executable, "download-worker"]
         if getattr(sys, "frozen", False)
         else [sys.executable, "-m", "server.download_worker"]
     )
+    if model.source == "github_release":
+        required = (
+            model.repo_id,
+            model.release_tag,
+            model.archive_name,
+            model.archive_sha256,
+            model.part_pattern,
+        )
+        if not all(required):
+            raise ValueError("github_release_definition_incomplete")
+        return [
+            *worker,
+            "--repository",
+            str(model.repo_id),
+            "--release-tag",
+            str(model.release_tag),
+            "--archive-name",
+            str(model.archive_name),
+            "--archive-sha256",
+            str(model.archive_sha256),
+            "--part-pattern",
+            str(model.part_pattern),
+            "--local-dir",
+            str(target),
+            "--required-file",
+            *(model.required_files or []),
+        ]
     return [
-        *prefix,
+        *worker,
         "--repo-id",
         model.repo_id,
         "--local-dir",
@@ -84,7 +122,7 @@ class ModelManager:
         with self._lock:
             return [self._model_payload(model) for model in self.catalog.values()]
 
-    def start(self, model_id: str) -> dict[str, object]:
+    def start(self, model_id: str, token: str | None = None) -> dict[str, object]:
         with self._lock:
             model = self._get_downloadable(model_id)
             if self._configured_path(model)[0]:
@@ -96,8 +134,14 @@ class ModelManager:
             settings = self.settings_store.load()
             target = self._managed_target(model)
             target.mkdir(parents=True, exist_ok=True)
+            download_token = (token or os.getenv("VOICEBRIDGE_GITHUB_TOKEN", "")).strip()
+            if model.auth_required and not download_token:
+                raise ValueError("model_token_required")
             command = self.command_builder(model, target, Path(settings.cache_dir))
             flags = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
+            child_environment = os.environ.copy()
+            if download_token:
+                child_environment["VOICEBRIDGE_GITHUB_TOKEN"] = download_token
             process = subprocess.Popen(
                 command,
                 cwd=str(Path(__file__).resolve().parents[1]),
@@ -105,6 +149,7 @@ class ModelManager:
                 stderr=subprocess.STDOUT,
                 text=True,
                 creationflags=flags,
+                env=child_environment,
             )
             self._processes[model_id] = process
             self._targets[model_id] = target
@@ -256,6 +301,13 @@ class ModelManager:
             "downloaded_bytes": downloaded,
             "progress": progress,
             "error": record.error if record else None,
+            "source_label": (
+                "Private GitHub Release"
+                if model.source == "github_release"
+                else "Hugging Face"
+                if model.downloadable
+                else "External configuration"
+            ),
         }
 
     def _configured_path(
@@ -278,6 +330,7 @@ class ModelManager:
             "qwen3_tts": "QWEN_TTS_MODEL_DIR",
             "qwen3_translation": "QWEN_TRANSLATION_MODEL_DIR",
             "qwen3_aligner": "QWEN_ALIGNER_MODEL_DIR",
+            "seamless_expressive": "SEAMLESS_EXPRESSIVE_MODEL_DIR",
         }.get(model.id)
         legacy = os.getenv(environment, "") if environment else ""
         if legacy and Path(legacy).is_dir():
@@ -312,7 +365,14 @@ class ModelManager:
                     raise ValueError("model_directory_type_mismatch")
             except (OSError, json.JSONDecodeError) as error:
                 raise ValueError("model_marker_invalid") from error
-        if model.id == "cosyvoice3":
+        if model.id == "seamless_expressive":
+            weights = [
+                target / name for name in (model.required_files or [])
+                if (target / name).is_file()
+            ]
+            if len(weights) != len(model.required_files or []):
+                raise ValueError("model_directory_signature_mismatch")
+        elif model.id == "cosyvoice3":
             config_present = any(
                 (target / name).is_file()
                 for name in ("cosyvoice.yaml", "config.yaml")

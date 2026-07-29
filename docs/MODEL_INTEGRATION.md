@@ -10,6 +10,7 @@
 | `qwen3_tts` | `Qwen/Qwen3-TTS-12Hz-1.7B-Base` | 备用声音候选 | 可选 |
 | `qwen3_translation` | `Qwen/Qwen3-4B-Instruct-2507` | 完全本地翻译 | 可选 |
 | `qwen3_aligner` | `Qwen/Qwen3-ForcedAligner-0.6B` | 词级时间戳和严格对齐 | 可选 |
+| `seamless_expressive` | `RSXLX/voicebridge-models-private` 私有 Release | 中文语音直达英文表达式语音 | 可选快速链路 |
 
 模型仓库元数据位于 `config/models.json`。其中体积是用于 GUI 进度展示的估算值，安装完成后的本地实际体积可能不同。
 
@@ -44,6 +45,7 @@ COSYVOICE_MODEL_DIR
 QWEN_TTS_MODEL_DIR
 QWEN_TRANSLATION_MODEL_DIR
 QWEN_ALIGNER_MODEL_DIR
+SEAMLESS_EXPRESSIVE_MODEL_DIR
 TRANSLATION_API_BASE
 ```
 
@@ -59,6 +61,7 @@ Windows GUI 中的“引入”按钮只记录已有模型目录，不复制权�
 6. 解除引入时只删除路径引用，不删除仓库。
 
 Qwen 系列需要 `config.json` 和实际权重；CosyVoice 需要 `cosyvoice.yaml`/`config.yaml` 以及 `llm.pt`、`flow.pt` 或 `hift.pt`。
+SeamlessExpressive 需要 `m2m_expressive_unity.pt`、`pretssel_melhifigan_wm.pt` 和 `pretssel_melhifigan_wm-16khz.pt`。
 
 ## 4. 断点续传
 
@@ -79,6 +82,10 @@ GUI 点击安装
 - 启动检查：只读本地标记和配置，不访问网络。
 
 Hugging Face Hub 的缓存负责分块复用和已有文件校验。网络中断后可直接点击“继续”。
+
+SeamlessExpressive 使用独立的 private GitHub Release worker。它通过
+HTTP Range 续传分卷，合并后校验归档 SHA-256，再执行防路径穿越的安全
+解压。GitHub token 仅用于当前下载进程，不持久化。
 
 ## 5. API
 
@@ -115,7 +122,7 @@ GET   /api/v1/runtime
 2. 只有显式点击“安装/继续”才允许联网；
 3. `MODEL_DOWNLOAD_DISABLED=1` 可完全禁用下载接口；
 4. 不提供“删除模型”接口，避免误删大体积本地数据；
-5. 私有或受限仓库后续通过用户令牌接入，令牌不得写入日志；
+5. 私有仓库通过一次性用户令牌接入，令牌不得写入设置、参数或日志；
 6. 模型安装完成不等于推理适配完成，两者必须分别显示状态。
 
 ## 7. 真实推理适配顺序
