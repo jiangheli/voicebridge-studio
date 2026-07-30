@@ -15,6 +15,31 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Validate Windows PowerShell 5.1 installer script
+        shell: powershell
+        run: |
+          $scriptPath = (Resolve-Path scripts\install-windows-local-gpu.ps1).Path
+          $bytes = [System.IO.File]::ReadAllBytes($scriptPath)
+          if (
+            $bytes.Length -lt 3 -or
+            $bytes[0] -ne 0xEF -or
+            $bytes[1] -ne 0xBB -or
+            $bytes[2] -ne 0xBF
+          ) {
+            throw "Installer script must be UTF-8 with BOM for Windows PowerShell 5.1"
+          }
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            $scriptPath,
+            [ref]$tokens,
+            [ref]$errors
+          ) | Out-Null
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Error $_.Message }
+            throw "Windows PowerShell 5.1 parser rejected installer script"
+          }
+
       - name: Install NSIS
         shell: powershell
         run: choco install nsis --yes --no-progress
@@ -24,6 +49,7 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path release | Out-Null
           & "${env:ProgramFiles(x86)}\NSIS\makensis.exe" `
+            /INPUTCHARSET UTF8 `
             /DOUTPUT_DIR=..\..\release `
             installer\windows-bootstrap\VoiceBridgeBareMetal.nsi
           if ($LASTEXITCODE -ne 0) {
@@ -33,7 +59,7 @@ jobs:
       - name: Verify installer exists
         shell: powershell
         run: |
-          $installer = Get-Item release\VoiceBridge-Studio-GPU-OneClick-Setup-0.6.2.exe
+          $installer = Get-Item release\VoiceBridge-Studio-GPU-OneClick-Setup-0.6.3.exe
           $hash = Get-FileHash $installer.FullName -Algorithm SHA256
           Write-Host "$($installer.Name) $($installer.Length) bytes"
           Write-Host "SHA256 $($hash.Hash)"
@@ -41,5 +67,5 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: VoiceBridge-GPU-OneClick-Setup
-          path: release/VoiceBridge-Studio-GPU-OneClick-Setup-0.6.2.exe
+          path: release/VoiceBridge-Studio-GPU-OneClick-Setup-0.6.3.exe
           if-no-files-found: error
