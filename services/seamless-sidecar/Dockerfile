@@ -2,6 +2,8 @@
 FROM pytorch/pytorch:2.1.2-cuda12.1-cudnn8-runtime
 
 ARG SEAMLESS_COMMIT=85199c276e761b2ec09ed8c1a293325df5971548
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=Etc/UTC
 
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
