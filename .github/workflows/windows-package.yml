@@ -40,21 +40,41 @@ jobs:
       - name: Package Windows application
         if: ${{ !startsWith(github.ref, 'refs/tags/') }}
         run: npm run package:win
-      - name: Publish Windows update
+      - name: Build Windows update
         if: ${{ startsWith(github.ref, 'refs/tags/') }}
         run: npm run release:win
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Attach bare-metal installer assets to release
+      - name: Publish verified update assets
         if: ${{ startsWith(github.ref, 'refs/tags/') }}
         shell: powershell
         run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $installer = "release\VoiceBridge-Studio-$version-Windows-x64.exe"
+          $blockmap = "$installer.blockmap"
+          $metadata = "release\latest.yml"
+          $bootstrap = "release\VoiceBridge-Studio-GPU-OneClick-Setup-$version.exe"
+          foreach ($required in @($installer, $blockmap, $metadata, $bootstrap)) {
+            if (-not (Test-Path -LiteralPath $required -PathType Leaf)) {
+              throw "Missing update asset: $required"
+            }
+          }
           Copy-Item scripts\install-windows-local-gpu.ps1 `
             release\VoiceBridge-Windows-Install-Logic.ps1
+          gh release view $env:GITHUB_REF_NAME *> $null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $env:GITHUB_REF_NAME `
+              --title "VoiceBridge Studio $env:GITHUB_REF_NAME" `
+              --generate-notes
+          }
           gh release upload $env:GITHUB_REF_NAME `
+            $installer `
+            $blockmap `
+            $metadata `
             release\VoiceBridge-Windows-Install-Logic.ps1 `
-            release\VoiceBridge-Studio-GPU-OneClick-Setup-0.6.0.exe `
+            $bootstrap `
             --clobber
+          if ($LASTEXITCODE -ne 0) {
+            throw "GitHub Release upload failed"
+          }
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/upload-artifact@v4
