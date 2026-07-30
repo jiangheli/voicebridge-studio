@@ -55,6 +55,9 @@ RUN git clone \
         -DBUILD_TESTING=OFF \
         -DFAIRSEQ2N_USE_CUDA=OFF \
         -DFAIRSEQ2N_PERFORM_LTO=OFF \
+        -DIconv_IS_BUILT_IN=FALSE \
+        -DIconv_INCLUDE_DIR=/opt/conda/include \
+        -DIconv_LIBRARY=/opt/conda/lib/libiconv.so \
     && cmake --build /opt/fairseq2/fairseq2n/build --parallel 2 \
     && mkdir -p /wheels \
     && cd /opt/fairseq2/fairseq2n/python \
