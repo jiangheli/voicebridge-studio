@@ -151,6 +151,17 @@ npm run package:win
 
 ## 9. 全新 Windows 裸机一键安装
 
+普通用户优先下载并运行图形化安装程序：
+
+```text
+VoiceBridge-Studio-GPU-OneClick-Setup-0.5.0.exe
+```
+
+安装程序会自动请求管理员权限，显示安装进度和 PowerShell 详细日志。
+WSL2 首次启用后，安装程序会询问是否立即重启；登录后自动继续余下步骤。
+
+CMD 和 PowerShell 是图形安装器不可用时的备用入口。
+
 不需要预装 Git、Python、Node.js、CUDA Toolkit、WSL、Docker Desktop
 或 VoiceBridge Studio。下载 `scripts` 目录中的以下两个文件并放在同一
 文件夹，然后双击 CMD：

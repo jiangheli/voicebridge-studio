@@ -4,6 +4,7 @@ param(
     [string]$ImportModelDirectory = "",
     [switch]$SkipDockerInstall,
     [switch]$SkipApplicationInstall,
+    [switch]$InstallerMode,
     [switch]$KeepDownloadCache
 )
 
@@ -55,6 +56,9 @@ function Get-ForwardedCommand {
     }
     if ($SkipApplicationInstall) {
         $Command += " -SkipApplicationInstall"
+    }
+    if ($InstallerMode) {
+        $Command += " -InstallerMode"
     }
     if ($KeepDownloadCache) {
         $Command += " -KeepDownloadCache"
@@ -352,9 +356,11 @@ if ($RestartRequired) {
     Write-Host ""
     Write-Host "WSL2 已启用，需要重启 Windows。" -ForegroundColor Yellow
     Write-Host "重启并登录后，Windows 会自动继续安装；届时只需确认一次 UAC。"
-    $RestartChoice = Read-Host "输入 R 并按 Enter 立即重启；直接按 Enter 可稍后手动重启"
-    if ($RestartChoice.Trim().ToUpperInvariant() -eq "R") {
-        Restart-Computer
+    if (-not $InstallerMode) {
+        $RestartChoice = Read-Host "输入 R 并按 Enter 立即重启；直接按 Enter 可稍后手动重启"
+        if ($RestartChoice.Trim().ToUpperInvariant() -eq "R") {
+            Restart-Computer
+        }
     }
     exit 3010
 }
