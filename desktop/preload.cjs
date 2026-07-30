@@ -5,6 +5,7 @@ contextBridge.exposeInMainWorld("voiceBridge", {
   platform: process.platform,
   chooseDirectory: () => ipcRenderer.invoke("voicebridge:choose-directory"),
   chooseMediaFile: () => ipcRenderer.invoke("voicebridge:choose-media-file"),
+  chooseVideoFile: () => ipcRenderer.invoke("voicebridge:choose-video-file"),
   openPath: (targetPath) => ipcRenderer.invoke("voicebridge:open-path", targetPath),
   openDocumentation: () => ipcRenderer.invoke("voicebridge:open-documentation"),
   localGpuStatus: () => ipcRenderer.invoke("voicebridge:local-gpu-status"),

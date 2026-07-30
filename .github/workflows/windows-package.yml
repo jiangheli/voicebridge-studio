@@ -26,6 +26,17 @@ jobs:
       - run: python -m pip install -r server/requirements.txt pytest httpx
       - run: npm run test:api
       - run: npm run test:desktop
+      - name: Build graphical bare-metal installer
+        shell: powershell
+        run: |
+          choco install nsis --yes --no-progress
+          New-Item -ItemType Directory -Force -Path release | Out-Null
+          & "${env:ProgramFiles(x86)}\NSIS\makensis.exe" `
+            /DOUTPUT_DIR=..\..\release `
+            installer\windows-bootstrap\VoiceBridgeBareMetal.nsi
+          if ($LASTEXITCODE -ne 0) {
+            throw "makensis failed with exit code $LASTEXITCODE"
+          }
       - name: Package Windows application
         if: ${{ !startsWith(github.ref, 'refs/tags/') }}
         run: npm run package:win
@@ -34,7 +45,7 @@ jobs:
         run: npm run release:win
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Attach installer logic to release
+      - name: Attach bare-metal installer assets to release
         if: ${{ startsWith(github.ref, 'refs/tags/') }}
         shell: powershell
         run: |
@@ -42,6 +53,7 @@ jobs:
             release\VoiceBridge-Windows-Install-Logic.ps1
           gh release upload $env:GITHUB_REF_NAME `
             release\VoiceBridge-Windows-Install-Logic.ps1 `
+            release\VoiceBridge-Studio-GPU-OneClick-Setup-0.6.0.exe `
             --clobber
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

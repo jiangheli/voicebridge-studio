@@ -8,7 +8,9 @@ VoiceBridge Studio.exe（Electron）
 │   └── 只通过 HTTP 与 preload 白名单能力通信
 ├── voicebridge-api.exe（FastAPI / 127.0.0.1:8765）
 ├── voicebridge-api.exe download-worker（仅下载期间存在）
-└── Docker Desktop / WSL2 sidecar（仅启用本机 GPU 时）
+└── Docker Desktop / WSL2 Linux GPU 容器
+    ├── SeamlessExpressive sidecar（启用快速直译时）
+    └── VSR 1.4.0 临时容器（执行视频清理时）
 ```
 
 安装包还会在 `resources/runtime/` 携带经过 SHA-256 校验的 Windows x64 LGPL shared FFmpeg 及其 DLL。版本、哈希和对应源码记录在 `THIRD_PARTY_NOTICES.md`。目标电脑无需安装 Node、Python、Git、FFmpeg 或模型下载 CLI。
@@ -65,10 +67,13 @@ npm run package:win
 3. SeamlessExpressive sidecar 的 Dockerfile、服务代码和固定依赖清单进入 resources；
 4. electron-builder 将 UI、Electron 壳和后端 EXE 写入 NSIS 安装包。
 
+VSR 模型和 CUDA/Python 依赖不进入安装包。用户在“视频清理”页显式预下载
+固定摘要的 6–7 GB Docker 镜像。
+
 结果：
 
 ```text
-release\VoiceBridge-Studio-0.5.0-Windows-x64.exe
+release\VoiceBridge-Studio-0.6.0-Windows-x64.exe
 ```
 
 安装器允许修改程序安装目录。模型不在程序目录内，升级或卸载程序不会自动删除模型目录。
@@ -79,8 +84,10 @@ release\VoiceBridge-Studio-0.5.0-Windows-x64.exe
 %LOCALAPPDATA%\VoiceBridge\
 ├── settings.json
 ├── logs\api.log
+├── logs\video-cleanup-runtime.log
 ├── models\
-└── cache\
+├── cache\video-cleanup\previews\
+└── outputs\cleaned\
 ```
 
 程序目录和模型目录分离，原因：
@@ -125,6 +132,9 @@ WSL2 和 Docker Desktop 是系统级能力，安装时需要用户确认管理�
 - WSL2 / Docker 缺失时提供对应安装动作，不误报 sidecar 已就绪；
 - 本机 sidecar 启动后快速直译自动改用 `http://127.0.0.1:8787`；
 - 停止 sidecar 不删除镜像或 checkpoint。
+- 视频清理运行镜像只能由“预下载运行资源”按钮拉取；
+- 视频清理任务使用 NVIDIA GPU，处理阶段不会隐式拉取镜像；
+- 清理输出保留原音轨且不会覆盖源视频。
 
 应用不能打包或替代显卡驱动。GPU 推理依赖系统已有 NVIDIA 驱动；CUDA Toolkit 本身不要求用户单独安装，后续推理运行时应携带所需 CUDA DLL。
 
@@ -148,13 +158,15 @@ npm run package:win
 - 网络断开后错误提示；
 - 安装包升级后模型仍存在；
 - NVIDIA 驱动、CUDA 与 CPU fallback 的运行提示。
+- 中文、英文、中英混合硬字幕和文字水印的清理结果；
+- 视频清理下载中断/继续、任务取消、源文件不覆盖和音轨保留。
 
 ## 9. 全新 Windows 裸机一键安装
 
 普通用户优先下载并运行图形化安装程序：
 
 ```text
-VoiceBridge-Studio-GPU-OneClick-Setup-0.5.1.exe
+VoiceBridge-Studio-GPU-OneClick-Setup-0.6.0.exe
 ```
 
 安装程序会自动请求管理员权限，显示安装进度和 PowerShell 详细日志。

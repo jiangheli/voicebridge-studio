@@ -118,6 +118,22 @@ def test_runtime_reports_cpu_fallback_and_ffmpeg_contract() -> None:
     assert isinstance(payload["python_bundled"], bool)
 
 
+def test_video_cleanup_accepts_chinese_and_english_task_languages() -> None:
+    for language in ("zh", "en"):
+        response = client.post(
+            "/api/v1/video-cleanup/jobs",
+            json={
+                "inspection_id": "missing-inspection",
+                "cleanup_kind": "subtitle",
+                "language": language,
+                "region_mode": "auto",
+                "regions": [],
+            },
+        )
+        assert response.status_code == 409
+        assert response.json()["detail"] == "inspection_not_found"
+
+
 def test_imports_and_unlinks_existing_model_repository(tmp_path: Path) -> None:
     repository = tmp_path / "qwen3-asr"
     repository.mkdir()

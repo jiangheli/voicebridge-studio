@@ -28,3 +28,22 @@ installer. They are downloaded only after an authorized user action from the
 private deployment registry. The checkpoints remain governed by Meta's
 Seamless License and acceptable-use policy. Users and deployers are responsible
 for confirming that their intended use and distribution are permitted.
+
+## Video Subtitle Remover
+
+The optional video-cleanup workflow pulls
+[YaoFANGUK/video-subtitle-remover](https://github.com/YaoFANGUK/video-subtitle-remover)
+release `1.4.0` as a Docker image only after an explicit user action. The
+upstream repository is licensed under Apache License 2.0. VoiceBridge does not
+bundle this 6–7 GB image in its Windows installer.
+
+VoiceBridge pins the following OCI index digests instead of floating tags:
+
+- CUDA 11.8: `sha256:a09797f10549ca78efd7389eff4e5be9907638fef383cda0f72f9f16da380135`
+- CUDA 12.6: `sha256:e58f9854b9d196a7ae8a614cac730096580dc23042223ee4a806f3b5595ae76a`
+- CUDA 12.8: `sha256:7a9c720c0491f129ab39bffa6ca59b736dfcdab0350fe871005624fc8b6fe99a`
+
+The image contains additional PaddleOCR and video-inpainting dependencies and
+model files. Users and deployers must review the upstream image's dependency
+and model terms for their intended use. VoiceBridge currently enables only the
+NVIDIA image variants; it does not claim that the upstream CPU image is valid.

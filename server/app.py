@@ -9,7 +9,7 @@ from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response
+from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, Field
 
 from server.expressive import ExpressiveService
@@ -17,6 +17,7 @@ from server.local_config import SettingsStore
 from server.model_manager import ModelManager
 from server.runtime import runtime_status
 from server.subtitles import SubtitleFormat, SubtitleTrack, render_subtitles
+from server.video_cleanup import VideoCleanupService
 
 
 class Quality(BaseModel):
@@ -99,10 +100,35 @@ class CreateExpressiveJobRequest(BaseModel):
     target_language: Literal["eng"] = "eng"
 
 
+class PrepareCleanupRuntimeRequest(BaseModel):
+    variant: Literal["auto", "cuda11.8", "cuda12.6", "cuda12.8"] = "auto"
+
+
+class InspectVideoRequest(BaseModel):
+    source_path: str = Field(min_length=1)
+
+
+class CleanupRegion(BaseModel):
+    x: float = Field(ge=0, le=1)
+    y: float = Field(ge=0, le=1)
+    width: float = Field(gt=0, le=1)
+    height: float = Field(gt=0, le=1)
+
+
+class CreateCleanupJobRequest(BaseModel):
+    inspection_id: str = Field(min_length=1)
+    cleanup_kind: Literal["subtitle", "watermark", "all_text"] = "subtitle"
+    language: Literal["auto", "zh", "en"] = "auto"
+    region_mode: Literal["auto", "manual"] = "manual"
+    regions: list[CleanupRegion] = Field(default_factory=list, max_length=8)
+    variant: Literal["auto", "cuda11.8", "cuda12.6", "cuda12.8"] = "auto"
+
+
 JOBS: dict[str, Job] = {}
 SETTINGS = SettingsStore()
 MODEL_MANAGER = ModelManager(SETTINGS)
 EXPRESSIVE_SERVICE = ExpressiveService(SETTINGS, MODEL_MANAGER)
+CLEANUP_SERVICE = VideoCleanupService(SETTINGS)
 
 
 def fixture_segments(job_id: str) -> list[Segment]:
@@ -148,11 +174,12 @@ def fixture_segments(job_id: str) -> list[Segment]:
 async def lifespan(_app: FastAPI):
     yield
     MODEL_MANAGER.shutdown()
+    CLEANUP_SERVICE.shutdown()
 
 
 app = FastAPI(
     title="VoiceBridge API",
-    version="0.5.1",
+    version="0.6.0",
     description="Local Windows desktop API with explicit, resumable model installation.",
     lifespan=lifespan,
 )
@@ -286,6 +313,80 @@ def create_expressive_job(
 def get_expressive_job(job_id: str) -> dict[str, object]:
     try:
         return EXPRESSIVE_SERVICE.get(job_id)
+    except KeyError as error:
+        raise HTTPException(status_code=404, detail="job_not_found") from error
+
+
+@app.get("/api/v1/video-cleanup/runtime")
+def cleanup_runtime(
+    variant: Literal["auto", "cuda11.8", "cuda12.6", "cuda12.8"] = "auto",
+) -> dict[str, object]:
+    return CLEANUP_SERVICE.runtime_status(variant)
+
+
+@app.post("/api/v1/video-cleanup/runtime/prepare", status_code=202)
+def prepare_cleanup_runtime(
+    request: PrepareCleanupRuntimeRequest,
+) -> dict[str, object]:
+    try:
+        return CLEANUP_SERVICE.prepare_runtime(request.variant)
+    except ValueError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+
+
+@app.post("/api/v1/video-cleanup/runtime/cancel")
+def cancel_cleanup_runtime() -> dict[str, object]:
+    return CLEANUP_SERVICE.cancel_runtime()
+
+
+@app.post("/api/v1/video-cleanup/inspect")
+def inspect_cleanup_video(
+    request: InspectVideoRequest,
+) -> dict[str, object]:
+    try:
+        return CLEANUP_SERVICE.inspect_video(request.source_path)
+    except ValueError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+
+
+@app.get("/api/v1/video-cleanup/previews/{inspection_id}")
+def cleanup_preview(inspection_id: str) -> FileResponse:
+    try:
+        path = CLEANUP_SERVICE.preview_path(inspection_id)
+    except KeyError as error:
+        raise HTTPException(status_code=404, detail="preview_not_found") from error
+    return FileResponse(path, media_type="image/jpeg")
+
+
+@app.post("/api/v1/video-cleanup/jobs", status_code=202)
+def create_cleanup_job(
+    request: CreateCleanupJobRequest,
+) -> dict[str, object]:
+    try:
+        return CLEANUP_SERVICE.start_job(
+            request.inspection_id,
+            request.cleanup_kind,
+            request.language,
+            request.region_mode,
+            [item.model_dump() for item in request.regions],
+            request.variant,
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+
+
+@app.get("/api/v1/video-cleanup/jobs/{job_id}")
+def get_cleanup_job(job_id: str) -> dict[str, object]:
+    try:
+        return CLEANUP_SERVICE.get_job(job_id)
+    except KeyError as error:
+        raise HTTPException(status_code=404, detail="job_not_found") from error
+
+
+@app.post("/api/v1/video-cleanup/jobs/{job_id}/cancel")
+def cancel_cleanup_job(job_id: str) -> dict[str, object]:
+    try:
+        return CLEANUP_SERVICE.cancel_job(job_id)
     except KeyError as error:
         raise HTTPException(status_code=404, detail="job_not_found") from error
 

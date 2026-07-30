@@ -122,6 +122,57 @@ export interface DesktopUpdateStatus {
   message: string;
 }
 
+export type CleanupVariant = "auto" | "cuda11.8" | "cuda12.6" | "cuda12.8";
+export type CleanupKind = "subtitle" | "watermark" | "all_text";
+export type CleanupLanguage = "auto" | "zh" | "en";
+export type CleanupRegionMode = "auto" | "manual";
+
+export interface CleanupRuntime {
+  state: "not_prepared" | "preparing" | "ready" | "failed" | "cancelled";
+  variant: Exclude<CleanupVariant, "auto">;
+  image: string;
+  estimated_size_bytes: number;
+  downloaded_bytes: number;
+  progress: number;
+  docker_ready: boolean;
+  gpu_name: string | null;
+  error: string | null;
+  log_path: string | null;
+}
+
+export interface VideoInspection {
+  id: string;
+  source_path: string;
+  source_name: string;
+  width: number;
+  height: number;
+  duration_seconds: number;
+  size_bytes: number;
+  preview_url: string;
+}
+
+export interface CleanupRegion {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface CleanupJob {
+  id: string;
+  inspection_id: string;
+  source_path: string;
+  source_name: string;
+  cleanup_kind: CleanupKind;
+  language: CleanupLanguage;
+  region_mode: CleanupRegionMode;
+  state: "queued" | "processing" | "remuxing" | "completed" | "failed" | "cancelled";
+  progress: number;
+  output_path: string | null;
+  error: string | null;
+  container_name: string | null;
+}
+
 declare global {
   interface Window {
     voiceBridge?: {
@@ -129,6 +180,7 @@ declare global {
       platform: string;
       chooseDirectory: () => Promise<string | null>;
       chooseMediaFile: () => Promise<DesktopMediaFile | null>;
+      chooseVideoFile: () => Promise<DesktopMediaFile | null>;
       openPath: (path: string) => Promise<string>;
       openDocumentation: () => Promise<string>;
       localGpuStatus: () => Promise<LocalGpuStatus>;
@@ -211,6 +263,74 @@ export async function fetchExpressiveJob(
   signal?: AbortSignal,
 ): Promise<ExpressiveJob> {
   return request<ExpressiveJob>(`/api/v1/expressive/jobs/${jobId}`, { signal });
+}
+
+export async function fetchCleanupRuntime(
+  variant: CleanupVariant = "auto",
+  signal?: AbortSignal,
+): Promise<CleanupRuntime> {
+  return request<CleanupRuntime>(
+    `/api/v1/video-cleanup/runtime?variant=${encodeURIComponent(variant)}`,
+    { signal },
+  );
+}
+
+export async function prepareCleanupRuntime(
+  variant: CleanupVariant = "auto",
+): Promise<CleanupRuntime> {
+  return request<CleanupRuntime>("/api/v1/video-cleanup/runtime/prepare", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ variant }),
+  });
+}
+
+export async function cancelCleanupRuntime(): Promise<CleanupRuntime> {
+  return request<CleanupRuntime>("/api/v1/video-cleanup/runtime/cancel", {
+    method: "POST",
+  });
+}
+
+export async function inspectCleanupVideo(
+  sourcePath: string,
+): Promise<VideoInspection> {
+  return request<VideoInspection>("/api/v1/video-cleanup/inspect", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ source_path: sourcePath }),
+  });
+}
+
+export function cleanupPreviewUrl(inspection: VideoInspection): string {
+  return `${apiBase}${inspection.preview_url}`;
+}
+
+export async function createCleanupJob(input: {
+  inspection_id: string;
+  cleanup_kind: CleanupKind;
+  language: CleanupLanguage;
+  region_mode: CleanupRegionMode;
+  regions: CleanupRegion[];
+  variant: CleanupVariant;
+}): Promise<CleanupJob> {
+  return request<CleanupJob>("/api/v1/video-cleanup/jobs", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+}
+
+export async function fetchCleanupJob(
+  jobId: string,
+  signal?: AbortSignal,
+): Promise<CleanupJob> {
+  return request<CleanupJob>(`/api/v1/video-cleanup/jobs/${jobId}`, { signal });
+}
+
+export async function cancelCleanupJob(jobId: string): Promise<CleanupJob> {
+  return request<CleanupJob>(`/api/v1/video-cleanup/jobs/${jobId}/cancel`, {
+    method: "POST",
+  });
 }
 
 export async function pauseModelDownload(modelId: string): Promise<ModelReadiness> {

@@ -7,6 +7,7 @@ import { serializeSubtitles, subtitleFilename, type SubtitleFormat, type Subtitl
 import type { JobFile, SegmentStatus, StoredJob } from "./types";
 import { ModelManagerView } from "./ModelManagerView";
 import { ExpressiveView } from "./ExpressiveView";
+import { VideoCleanupView } from "./VideoCleanupView";
 
 const waveform = Array.from({ length: 116 }, (_, i) =>
   Math.round(12 + Math.abs(Math.sin(i * 0.47) * 34) + Math.abs(Math.cos(i * 0.18) * 22)),
@@ -34,7 +35,7 @@ function createJobId() {
 }
 
 function App() {
-  const [view, setView] = useState<"workspace" | "expressive" | "jobs" | "models">("workspace");
+  const [view, setView] = useState<"workspace" | "expressive" | "cleanup" | "jobs" | "models">("workspace");
   const [file, setFile] = useState<JobFile | null>(null);
   const [segments, setSegments] = useState(initialSegments);
   const [activeId, setActiveId] = useState("SEG 003");
@@ -266,6 +267,9 @@ function App() {
           <button className={view === "expressive" ? "active" : ""} onClick={() => setView("expressive")}>
             <span className="nav-icon">ϟ</span>快速直译
           </button>
+          <button className={view === "cleanup" ? "active" : ""} onClick={() => setView("cleanup")}>
+            <span className="nav-icon">⌗</span>视频清理
+          </button>
           <button className={view === "jobs" ? "active" : ""} onClick={() => setView("jobs")}>
             <span className="nav-icon">◫</span>全部任务 <em>{Math.max(1, jobs.length)}</em>
           </button>
@@ -302,8 +306,8 @@ function App() {
       <main>
         <header className="topbar">
           <div>
-            <span className="eyebrow">{view === "workspace" ? "翻译任务 / 可控链路" : view === "expressive" ? "SeamlessExpressive / 快速链路" : view === "jobs" ? "浏览器存储 / 任务记录" : "运行环境 / 模型适配"}</span>
-            <h1>{view === "workspace" ? fileLabel : view === "expressive" ? "中文语音 → 英文表达式语音" : view === "jobs" ? "全部任务" : "模型与运行状态"}</h1>
+            <span className="eyebrow">{view === "workspace" ? "翻译任务 / 可控链路" : view === "expressive" ? "SeamlessExpressive / 快速链路" : view === "cleanup" ? "硬字幕与文字水印 / 视频修复" : view === "jobs" ? "浏览器存储 / 任务记录" : "运行环境 / 模型适配"}</span>
+            <h1>{view === "workspace" ? fileLabel : view === "expressive" ? "中文语音 → 英文表达式语音" : view === "cleanup" ? "视频文字清理" : view === "jobs" ? "全部任务" : "模型与运行状态"}</h1>
           </div>
           <div className="top-actions">
             <span className={`offline ${apiOnline ? "connected" : ""}`}><i />{apiOnline ? "API 已连接" : "本地模式"}</span>
@@ -317,6 +321,11 @@ function App() {
           <ModelManagerView onConnectionChange={setApiOnline} />
         ) : view === "expressive" ? (
           <ExpressiveView
+            onConnectionChange={setApiOnline}
+            onOpenModels={() => setView("models")}
+          />
+        ) : view === "cleanup" ? (
+          <VideoCleanupView
             onConnectionChange={setApiOnline}
             onOpenModels={() => setView("models")}
           />

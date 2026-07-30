@@ -16,6 +16,9 @@
 → Qwen3-ASR 英文反识别
 → 内容、音色和时长质量闸门
 → 背景轨回混与视频输出
+
+视频清理
+视频 → 中文/英文硬字幕或文字水印检测 → STTN 修复 → 原音轨回挂
 ```
 
 ## 当前状态
@@ -28,6 +31,8 @@
 - 从 `RSXLX/voicebridge-models-private` 私有 Release 安装 SeamlessExpressive 分卷，支持 Range 续传、合并哈希校验和安全解压；
 - “快速直译”独立页面和 SeamlessExpressive Linux GPU sidecar；
 - EXE 内置本机 NVIDIA 管理区，可检测并引导安装 WSL2、Docker Desktop，一键构建和启动本机 sidecar；
+- “视频清理”页支持中文、英文和中英混合硬字幕，以及手动选区文字水印；
+- 用户显式预下载固定摘要的 VSR 1.4.0 NVIDIA 运行镜像，处理中使用 `--pull never`；
 - 从已有 Hugging Face / ModelScope 仓库目录直接引入模型；
 - 自带 FFmpeg，并自动检测 NVIDIA 驱动或使用 CPU 模式；
 - Windows PyInstaller 后端和 NSIS 安装包脚本；
@@ -48,6 +53,11 @@
 Windows x64 预编译包，因此 Windows EXE 在本机通过 Docker Desktop 的
 WSL2 Linux 引擎运行推理，也可以继续连接独立 Linux GPU 主机。模型中心
 下载的 checkpoint 会以只读目录挂载给本机容器，不产生第二份模型副本。
+
+视频硬字幕/文字水印清理同样使用 Docker Desktop 的 Linux GPU 引擎。
+运行镜像约 6–7 GB，不集成进 EXE；Docker 按层断点续传，GUI 只在用户点击
+“预下载运行资源”后联网。处理后的 MP4 位于
+`%LOCALAPPDATA%\VoiceBridge\outputs\cleaned`，并重新挂载源视频音轨。
 
 ## 本地开发
 
@@ -98,6 +108,7 @@ EXE 启动和停止。NVIDIA 驱动仍由系统提供。
 - [Windows 打包与本地目录](docs/WINDOWS.md)
 - [字幕交付规范](docs/SUBTITLES.md)
 - [SeamlessExpressive 快速链路](docs/SEAMLESS_EXPRESSIVE.md)
+- [视频硬字幕与文字水印清理](docs/VIDEO_CLEANUP.md)
 
 ## 安全边界
 
@@ -108,4 +119,5 @@ EXE 启动和停止。NVIDIA 驱动仍由系统提供。
 - 原始媒体和背景轨按只读母版处理；
 - 私有仓库 token 不持久化；
 - 快速链路只返回英文语音 WAV，不冒充已完成背景回混或字幕审校；
+- 视频清理使用固定镜像摘要、只读源目录和程序生成的输出路径；
 - 当前 fixture 结果不会冒充真实模型推理。
