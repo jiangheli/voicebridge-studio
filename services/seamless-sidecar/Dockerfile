@@ -1,10 +1,18 @@
+# syntax=docker/dockerfile:1
 FROM pytorch/pytorch:2.1.2-cuda12.1-cudnn8-runtime
 
 ARG SEAMLESS_COMMIT=85199c276e761b2ec09ed8c1a293325df5971548
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends ffmpeg git libsndfile1 \
-    && rm -rf /var/lib/apt/lists/*
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
+    apt-get -o Acquire::Retries=10 update \
+    && apt-get -o Acquire::Retries=10 install \
+        -y \
+        --fix-missing \
+        --no-install-recommends \
+        ffmpeg \
+        git \
+        libsndfile1
 
 RUN git clone https://github.com/facebookresearch/seamless_communication.git /opt/seamless_communication \
     && cd /opt/seamless_communication \
