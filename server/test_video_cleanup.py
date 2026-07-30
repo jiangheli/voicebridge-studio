@@ -246,13 +246,13 @@ def test_worker_completes_bilingual_cleanup_and_remuxes_audio(
             return subprocess.CompletedProcess(command, 0, '"27.0.0"', "")
         if command[1:3] == ["image", "inspect"]:
             return subprocess.CompletedProcess(command, 0, "", "")
-        if command[0] == "/ffprobe":
+        if Path(command[0]).name == "ffprobe":
             payload = {
                 "streams": [{"width": 1280, "height": 720}],
                 "format": {"duration": "3.0"},
             }
             return subprocess.CompletedProcess(command, 0, json.dumps(payload), "")
-        if command[0] == "/ffmpeg":
+        if Path(command[0]).name == "ffmpeg":
             Path(command[-1]).write_bytes(b"remuxed-video-with-source-audio")
             return subprocess.CompletedProcess(command, 0, "", "")
         raise AssertionError(f"unexpected command: {command}")
