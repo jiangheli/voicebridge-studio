@@ -148,3 +148,65 @@ npm run package:win
 - 网络断开后错误提示；
 - 安装包升级后模型仍存在；
 - NVIDIA 驱动、CUDA 与 CPU fallback 的运行提示。
+
+## 9. 全新 Windows 裸机一键安装
+
+不需要预装 Git、Python、Node.js、CUDA Toolkit、WSL、Docker Desktop
+或 VoiceBridge Studio。下载 `scripts` 目录中的以下两个文件并放在同一
+文件夹，然后双击 CMD：
+
+```text
+install-windows-bare-metal.cmd
+install-windows-local-gpu.ps1
+```
+
+```bat
+install-windows-bare-metal.cmd
+```
+
+CMD 会调用 Windows 自带的 PowerShell，PowerShell 再通过 UAC 自动申请
+管理员权限。脚本将依次完成：
+
+1. 检查 NVIDIA Windows 驱动；
+2. 启用 WSL 和 Virtual Machine Platform；
+3. 注册登录后续装任务，并在需要时提示重启；
+4. 更新 WSL2，并设置默认版本为 2；
+5. 下载、安装和启动 Docker Desktop；
+6. 确认 Docker Server OS 为 `linux`；
+7. 下载、合并、校验并解压 SeamlessExpressive checkpoint；
+8. 构建并以 `--gpus all` 启动 Sidecar；
+9. 检查 CUDA、模型和 HTTP 健康状态；
+10. 下载并校验 VoiceBridge Studio 0.5.0 安装包，静默安装并启动；
+11. 写入模型目录和 `http://127.0.0.1:8787` 服务地址。
+
+如果只拿到了 CMD，CMD 会尝试从公开 GitHub 仓库下载 PowerShell 主脚本。
+也可以直接执行 PowerShell 主脚本：
+
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass
+.\scripts\install-windows-local-gpu.ps1
+```
+
+脚本会自行请求管理员权限。首次启用 WSL2 后会要求重启；选择立即重启或
+手动重启均可。登录后安装器会自动续装并再次显示 UAC。模型默认优先写入
+`D:\VoiceBridge\Models`，没有 D 盘时写入
+`%LOCALAPPDATA%\VoiceBridge\models`。也可以手动指定：
+
+```powershell
+.\scripts\install-windows-local-gpu.ps1 -ModelRoot "E:\VoiceBridge\Models"
+```
+
+如果三个 checkpoint 已在磁盘中，可直接引入，不复制权重：
+
+```powershell
+.\scripts\install-windows-local-gpu.ps1 `
+  -ImportModelDirectory "E:\Models\SeamlessExpressive"
+```
+
+脚本不会自动接受 Docker Desktop 的许可条款。Docker Desktop 第一次启动
+时需要用户在官方窗口中阅读并确认；确认后脚本会继续等待 Linux 引擎。
+
+裸机仍须满足不可由通用脚本代替的硬件条件：x64 Windows 10/11、BIOS/UEFI
+已开启 CPU 虚拟化、NVIDIA GPU、足够的显存和磁盘空间。如果没有 NVIDIA
+驱动，脚本会打开 NVIDIA 官方页面；按显卡型号安装最新 Windows 驱动并
+重启后，再次双击 CMD 即可继续。
