@@ -11,7 +11,7 @@ RequestExecutionLevel admin
 
 Name "VoiceBridge Studio GPU 一键安装"
 OutFile "${OUTPUT_DIR}\VoiceBridge-Studio-GPU-OneClick-Setup-0.5.0.exe"
-InstallDir "$PROGRAMDATA\VoiceBridge\Installer"
+InstallDir "$COMMONAPPDATA\VoiceBridge\Installer"
 ShowInstDetails show
 SetCompressor /SOLID lzma
 
@@ -38,7 +38,7 @@ VIAddVersionKey /LANG=2052 "ProductVersion" "0.5.0"
 Section "VoiceBridge 完整环境" MainSection
     SectionIn RO
     SetOutPath "$INSTDIR"
-    File /oname=install-windows-local-gpu.ps1 "scripts\install-windows-local-gpu.ps1"
+    File /oname=install-windows-local-gpu.ps1 "..\..\scripts\install-windows-local-gpu.ps1"
 
     DetailPrint "正在启动裸机环境检查与安装..."
     DetailPrint "首次安装需要下载模型和 GPU 镜像，可能需要 30–60 分钟。"
