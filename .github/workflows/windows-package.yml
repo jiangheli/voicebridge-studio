@@ -72,8 +72,6 @@ jobs:
               throw "Missing update asset: $required"
             }
           }
-          Copy-Item scripts\install-windows-local-gpu.ps1 `
-            release\VoiceBridge-Windows-Install-Logic.ps1
           $releaseTags = @(
             gh release list --limit 100 --json tagName |
               ConvertFrom-Json |
@@ -91,7 +89,6 @@ jobs:
             $installer `
             $blockmap `
             $metadata `
-            release\VoiceBridge-Windows-Install-Logic.ps1 `
             --clobber
           if ($LASTEXITCODE -ne 0) {
             throw "GitHub Release upload failed"
@@ -105,5 +102,4 @@ jobs:
             release/*.exe
             release/*.yml
             release/*.blockmap
-            release/VoiceBridge-Windows-Install-Logic.ps1
           if-no-files-found: error
