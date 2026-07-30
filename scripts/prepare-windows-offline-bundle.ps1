@@ -52,7 +52,7 @@ $Downloads = @(
     @{
         Name = "Docker-Desktop-Installer.exe"
         Uri = "https://desktop.docker.com/win/main/amd64/Docker%20Desktop%20Installer.exe"
-        Sha256 = ""
+        Sha256 = "fe54164c1ceb9e2004137e22e4013826baccf2352c1cedb27e8daa8e56230dd7"
     }
 )
 
