@@ -6,17 +6,18 @@ param(
     [switch]$SkipApplicationInstall,
     [switch]$InstallerMode,
     [switch]$SkipSelfUpdate,
-    [switch]$KeepDownloadCache
+    [switch]$KeepDownloadCache,
+    [string]$OfflinePayloadDirectory = ""
 )
 
 $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-$ApplicationVersion = "0.5.0"
+$ApplicationVersion = "0.6.3"
 $ApplicationRepository = "jiangheli/voicebridge-studio"
 $ApplicationInstallerName = "VoiceBridge-Studio-$ApplicationVersion-Windows-x64.exe"
-$ApplicationInstallerSha256 = "8a6ca97c20e448961d23e236a0a46ce334fb60d63903a7bb99ed628bb2448af9"
+$ApplicationInstallerSha256 = "3dd0ad029a5d012fba96996913f528a0c7eb008ee3e264c0e4884ed1f7164b52"
 $ReleaseTag = "seamless-expressive-2023-11-29"
 $ModelRepository = "RSXLX/voicebridge-models-private"
 $ArchiveName = "SeamlessExpressive.tar.gz"
@@ -66,6 +67,10 @@ function Get-ForwardedCommand {
     }
     if ($KeepDownloadCache) {
         $Command += " -KeepDownloadCache"
+    }
+    if ($OfflinePayloadDirectory) {
+        $Command += " -OfflinePayloadDirectory " +
+            (ConvertTo-SingleQuotedPowerShellLiteral -Value $OfflinePayloadDirectory)
     }
     return $Command
 }
@@ -197,6 +202,66 @@ function Get-AssetSha256 {
     return ""
 }
 
+function Get-OfflinePayloadPath {
+    param([Parameter(Mandatory = $true)][string]$Name)
+    if (-not $OfflinePayloadDirectory) {
+        throw "当前安装未启用离线 payload。"
+    }
+    $Path = Join-Path $OfflinePayloadDirectory $Name
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        throw "离线包缺少文件：$Name"
+    }
+    return $Path
+}
+
+function Test-OfflinePayload {
+    if (-not $OfflinePayloadDirectory) {
+        return
+    }
+    if (-not (Test-Path -LiteralPath $OfflinePayloadDirectory -PathType Container)) {
+        throw "找不到离线 payload 目录：$OfflinePayloadDirectory"
+    }
+    $ManifestPath = Get-OfflinePayloadPath -Name "offline-manifest.json"
+    try {
+        $Manifest = Get-Content -LiteralPath $ManifestPath -Raw | ConvertFrom-Json
+    }
+    catch {
+        throw "离线包清单无法解析：offline-manifest.json"
+    }
+    if ($Manifest.schema_version -ne 1 -or -not $Manifest.files) {
+        throw "离线包清单格式不受支持。"
+    }
+    $RequiredNames = @(
+        "Docker-Desktop-Installer.exe",
+        "wsl-x64.msi",
+        "VoiceBridge-Studio-Windows-x64.exe",
+        "SeamlessExpressive.tar.gz.part-00",
+        "SeamlessExpressive.tar.gz.part-01",
+        "SEAMLESS_LICENSE",
+        "NOTICE",
+        "voicebridge-seamless-sidecar-amd64.tar"
+    )
+    $ManifestNames = @($Manifest.files | ForEach-Object { "$($_.name)" })
+    foreach ($RequiredName in $RequiredNames) {
+        if ($ManifestNames -notcontains $RequiredName) {
+            throw "离线包清单缺少条目：$RequiredName"
+        }
+    }
+    foreach ($Entry in $Manifest.files) {
+        $PayloadPath = Get-OfflinePayloadPath -Name "$($Entry.name)"
+        $Item = Get-Item -LiteralPath $PayloadPath
+        if ([int64]$Entry.size -ne $Item.Length) {
+            throw "离线文件大小不正确：$($Entry.name)"
+        }
+        $ActualHash = (
+            Get-FileHash -LiteralPath $PayloadPath -Algorithm SHA256
+        ).Hash.ToLowerInvariant()
+        if ($ActualHash -ne "$($Entry.sha256)".ToLowerInvariant()) {
+            throw "离线文件校验失败：$($Entry.name)"
+        }
+    }
+}
+
 function Merge-BinaryFiles {
     param(
         [Parameter(Mandatory = $true)][string[]]$Sources,
@@ -258,6 +323,12 @@ function Test-ModelDirectory {
 if (-not [Environment]::Is64BitOperatingSystem) {
     throw "只支持 Windows 10/11 x64。"
 }
+if ($OfflinePayloadDirectory) {
+    $OfflinePayloadDirectory = [System.IO.Path]::GetFullPath(
+        $OfflinePayloadDirectory
+    )
+    $SkipSelfUpdate = $true
+}
 $WindowsBuild = [Environment]::OSVersion.Version.Build
 if ($WindowsBuild -lt 19045 -or ($WindowsBuild -ge 22000 -and $WindowsBuild -lt 22631)) {
     throw "当前 Windows build 为 $WindowsBuild。请先通过 Windows Update 升级到 Windows 10 22H2 build 19045，或 Windows 11 23H2 build 22631 以上。"
@@ -305,7 +376,10 @@ if (
     Copy-Item -LiteralPath $PSCommandPath -Destination $ResumeScriptPath -Force
 }
 
-$LatestRelease = Get-LatestVoiceBridgeRelease
+$LatestRelease = $null
+if (-not $OfflinePayloadDirectory) {
+    $LatestRelease = Get-LatestVoiceBridgeRelease
+}
 if (-not $SkipSelfUpdate -and $LatestRelease) {
     $LogicAsset = $LatestRelease.assets |
         Where-Object { $_.name -eq "VoiceBridge-Windows-Install-Logic.ps1" } |
@@ -355,6 +429,11 @@ Remove-ItemProperty `
     -Name $ResumeRegistryName `
     -ErrorAction SilentlyContinue
 
+if ($OfflinePayloadDirectory) {
+    Write-Step "校验离线安装包"
+    Test-OfflinePayload
+}
+
 if ($ModelRoot -and $ImportModelDirectory) {
     throw "ModelRoot 和 ImportModelDirectory 不能同时使用。"
 }
@@ -384,6 +463,22 @@ $SettingsPath = Join-Path $DataDirectory "settings.json"
 Write-Step "检查 NVIDIA Windows 驱动"
 $NvidiaSmi = Get-Command nvidia-smi.exe -ErrorAction SilentlyContinue
 if (-not $NvidiaSmi) {
+    if ($OfflinePayloadDirectory) {
+        $OfflineDriver = Join-Path $OfflinePayloadDirectory "NVIDIA-Driver.exe"
+        if (Test-Path -LiteralPath $OfflineDriver -PathType Leaf) {
+            Write-Host "正在安装离线 NVIDIA 驱动。"
+            $DriverProcess = Start-Process `
+                -FilePath $OfflineDriver `
+                -ArgumentList @("-s", "-noreboot") `
+                -Wait `
+                -PassThru
+            if ($DriverProcess.ExitCode -notin @(0, 1, 3010)) {
+                throw "NVIDIA 驱动安装失败，退出码：$($DriverProcess.ExitCode)"
+            }
+            throw "NVIDIA 驱动已安装，请重启 Windows 后再次运行离线安装入口。"
+        }
+        throw "当前电脑没有可用的 NVIDIA 驱动。请把适配此显卡的安装包命名为 NVIDIA-Driver.exe 放进 payload，或先离线安装驱动。"
+    }
     Write-Host "未找到 NVIDIA 驱动。正在打开 NVIDIA 官方驱动下载页面。" -ForegroundColor Yellow
     Start-Process "https://www.nvidia.com/Download/index.aspx"
     throw "请按显卡型号安装最新 NVIDIA Windows 驱动，重启 Windows，然后再次双击安装入口。"
@@ -439,9 +534,22 @@ if ($RestartRequired) {
     exit 3010
 }
 
-& wsl.exe --update
-if ($LASTEXITCODE -ne 0) {
-    throw "WSL 更新失败。"
+if ($OfflinePayloadDirectory) {
+    $WslInstaller = Get-OfflinePayloadPath -Name "wsl-x64.msi"
+    $WslProcess = Start-Process `
+        -FilePath "msiexec.exe" `
+        -ArgumentList @("/i", "`"$WslInstaller`"", "/qn", "/norestart") `
+        -Wait `
+        -PassThru
+    if ($WslProcess.ExitCode -notin @(0, 3010, 1641)) {
+        throw "WSL 离线安装失败，退出码：$($WslProcess.ExitCode)"
+    }
+}
+else {
+    & wsl.exe --update
+    if ($LASTEXITCODE -ne 0) {
+        throw "WSL 更新失败。"
+    }
 }
 & wsl.exe --set-default-version 2
 if ($LASTEXITCODE -ne 0) {
@@ -451,30 +559,53 @@ if ($LASTEXITCODE -ne 0) {
 Write-Step "检查 Docker Desktop"
 $Docker = Get-DockerExecutable
 if (-not $Docker -and -not $SkipDockerInstall) {
-    $Winget = Get-Command winget.exe -ErrorAction SilentlyContinue
-    if ($Winget) {
-        & $Winget.Source install `
-            --exact `
-            --id Docker.DockerDesktop `
-            --accept-package-agreements `
-            --accept-source-agreements
-        if ($LASTEXITCODE -ne 0) {
-            throw "winget 安装 Docker Desktop 失败。"
+    if ($OfflinePayloadDirectory) {
+        $Installer = Get-OfflinePayloadPath -Name "Docker-Desktop-Installer.exe"
+        $Signature = Get-AuthenticodeSignature -LiteralPath $Installer
+        if ($Signature.Status -ne "Valid") {
+            throw "Docker Desktop 离线安装程序数字签名无效。"
+        }
+        $DockerProcess = Start-Process `
+            -FilePath $Installer `
+            -ArgumentList @(
+                "install",
+                "--user",
+                "--backend=wsl-2",
+                "--accept-license",
+                "--quiet"
+            ) `
+            -Wait `
+            -PassThru
+        if ($DockerProcess.ExitCode -notin @(0, 3010)) {
+            throw "Docker Desktop 离线安装失败，退出码：$($DockerProcess.ExitCode)"
         }
     }
     else {
-        $Installer = Join-Path $env:TEMP "DockerDesktopInstaller.exe"
-        Invoke-CurlDownload `
-            -Uri "https://desktop.docker.com/win/main/amd64/Docker%20Desktop%20Installer.exe" `
-            -Destination $Installer
-        $Signature = Get-AuthenticodeSignature -LiteralPath $Installer
-        if ($Signature.Status -ne "Valid") {
-            throw "Docker Desktop 安装程序数字签名无效。"
+        $Winget = Get-Command winget.exe -ErrorAction SilentlyContinue
+        if ($Winget) {
+            & $Winget.Source install `
+                --exact `
+                --id Docker.DockerDesktop `
+                --accept-package-agreements `
+                --accept-source-agreements
+            if ($LASTEXITCODE -ne 0) {
+                throw "winget 安装 Docker Desktop 失败。"
+            }
         }
-        Start-Process `
-            -FilePath $Installer `
-            -ArgumentList @("install", "--user", "--backend=wsl-2") `
-            -Wait
+        else {
+            $Installer = Join-Path $env:TEMP "DockerDesktopInstaller.exe"
+            Invoke-CurlDownload `
+                -Uri "https://desktop.docker.com/win/main/amd64/Docker%20Desktop%20Installer.exe" `
+                -Destination $Installer
+            $Signature = Get-AuthenticodeSignature -LiteralPath $Installer
+            if ($Signature.Status -ne "Valid") {
+                throw "Docker Desktop 安装程序数字签名无效。"
+            }
+            Start-Process `
+                -FilePath $Installer `
+                -ArgumentList @("install", "--user", "--backend=wsl-2") `
+                -Wait
+        }
     }
     $Docker = Get-DockerExecutable
 }
@@ -513,10 +644,16 @@ if (-not $UsingImportedModel) {
 if (-not (Test-ModelDirectory -Directory $ModelDirectory)) {
     $DownloadedParts = @()
     foreach ($Part in $ArchiveParts) {
-        $PartPath = Join-Path $DownloadDirectory $Part
-        $PartUri = "https://github.com/$ModelRepository/releases/download/$ReleaseTag/$Part"
-        Write-Host "下载 $Part"
-        Invoke-CurlDownload -Uri $PartUri -Destination $PartPath
+        if ($OfflinePayloadDirectory) {
+            $PartPath = Get-OfflinePayloadPath -Name $Part
+            Write-Host "使用离线模型分卷 $Part"
+        }
+        else {
+            $PartPath = Join-Path $DownloadDirectory $Part
+            $PartUri = "https://github.com/$ModelRepository/releases/download/$ReleaseTag/$Part"
+            Write-Host "下载 $Part"
+            Invoke-CurlDownload -Uri $PartUri -Destination $PartPath
+        }
         $DownloadedParts += $PartPath
     }
 
@@ -600,9 +737,17 @@ if (-not $UsingImportedModel) {
     foreach ($LegalFile in @("SEAMLESS_LICENSE", "NOTICE")) {
         $LegalPath = Join-Path $ModelDirectory $LegalFile
         if (-not (Test-Path -LiteralPath $LegalPath -PathType Leaf)) {
-            Invoke-CurlDownload `
-                -Uri "https://github.com/$ModelRepository/releases/download/$ReleaseTag/$LegalFile" `
-                -Destination $LegalPath
+            if ($OfflinePayloadDirectory) {
+                Copy-Item `
+                    -LiteralPath (Get-OfflinePayloadPath -Name $LegalFile) `
+                    -Destination $LegalPath `
+                    -Force
+            }
+            else {
+                Invoke-CurlDownload `
+                    -Uri "https://github.com/$ModelRepository/releases/download/$ReleaseTag/$LegalFile" `
+                    -Destination $LegalPath
+            }
         }
     }
 
@@ -619,23 +764,37 @@ if (-not $UsingImportedModel) {
 }
 
 Write-Step "准备 SeamlessExpressive Sidecar"
-$SidecarDirectory = Join-Path $DataDirectory "sidecar\0.5.0"
+$SidecarDirectory = Join-Path $DataDirectory "sidecar\0.6.3"
 New-Item -ItemType Directory -Force -Path $SidecarDirectory | Out-Null
 $SidecarFiles = @("Dockerfile", "requirements.txt", "app.py")
-foreach ($SidecarFile in $SidecarFiles) {
-    $SidecarPath = Join-Path $SidecarDirectory $SidecarFile
-    if (-not (Test-Path -LiteralPath $SidecarPath -PathType Leaf)) {
-        $SidecarUri = "https://raw.githubusercontent.com/jiangheli/voicebridge-studio/v0.5.0/services/seamless-sidecar/$SidecarFile"
-        Invoke-CurlDownload -Uri $SidecarUri -Destination $SidecarPath
+if (-not $OfflinePayloadDirectory) {
+    foreach ($SidecarFile in $SidecarFiles) {
+        $SidecarPath = Join-Path $SidecarDirectory $SidecarFile
+        if (-not (Test-Path -LiteralPath $SidecarPath -PathType Leaf)) {
+            $SidecarUri = "https://raw.githubusercontent.com/jiangheli/voicebridge-studio/v0.6.3/services/seamless-sidecar/$SidecarFile"
+            Invoke-CurlDownload -Uri $SidecarUri -Destination $SidecarPath
+        }
     }
 }
 
 $ExistingImage = & $Docker image inspect $ImageName --format "{{.Id}}" 2>$null
 if ($LASTEXITCODE -ne 0 -or -not "$ExistingImage".Trim()) {
-    Write-Host "首次构建 GPU 推理镜像，通常需要 10–30 分钟。"
-    & $Docker build --tag $ImageName $SidecarDirectory
+    if ($OfflinePayloadDirectory) {
+        Write-Host "导入离线 GPU 推理镜像。"
+        $ImageArchive = Get-OfflinePayloadPath `
+            -Name "voicebridge-seamless-sidecar-amd64.tar"
+        & $Docker load --input $ImageArchive
+    }
+    else {
+        Write-Host "首次构建 GPU 推理镜像，通常需要 10–30 分钟。"
+        & $Docker build --tag $ImageName $SidecarDirectory
+    }
     if ($LASTEXITCODE -ne 0) {
-        throw "Sidecar Docker 镜像构建失败。"
+        throw "Sidecar Docker 镜像准备失败。"
+    }
+    $ExistingImage = & $Docker image inspect $ImageName --format "{{.Id}}" 2>$null
+    if ($LASTEXITCODE -ne 0 -or -not "$ExistingImage".Trim()) {
+        throw "离线镜像中没有找到 $ImageName。"
     }
 }
 
@@ -719,26 +878,32 @@ $SettingsJson = $Settings | ConvertTo-Json -Depth 8
 Write-Step "安装 VoiceBridge Studio"
 $VoiceBridgeExecutable = Get-VoiceBridgeExecutable
 if (-not $VoiceBridgeExecutable -and -not $SkipApplicationInstall) {
-    $ApplicationInstallerUri = "https://github.com/$ApplicationRepository/releases/download/v$ApplicationVersion/$ApplicationInstallerName"
-    if ($LatestRelease) {
-        $LatestInstallerAsset = $LatestRelease.assets |
-            Where-Object {
-                $_.name -match "^VoiceBridge-Studio-[0-9]+\.[0-9]+\.[0-9]+-Windows-x64\.exe$"
-            } |
-            Select-Object -First 1
-        $LatestInstallerSha256 = Get-AssetSha256 -Asset $LatestInstallerAsset
-        if ($LatestInstallerAsset -and $LatestInstallerSha256) {
-            $ApplicationVersion = "$($LatestRelease.tag_name)".TrimStart("v")
-            $ApplicationInstallerName = $LatestInstallerAsset.name
-            $ApplicationInstallerSha256 = $LatestInstallerSha256
-            $ApplicationInstallerUri = $LatestInstallerAsset.browser_download_url
-        }
+    if ($OfflinePayloadDirectory) {
+        $ApplicationInstaller = Get-OfflinePayloadPath `
+            -Name "VoiceBridge-Studio-Windows-x64.exe"
     }
-    $ApplicationDownloadDirectory = Join-Path $BootstrapDirectory "downloads"
-    $ApplicationInstaller = Join-Path $ApplicationDownloadDirectory $ApplicationInstallerName
-    Invoke-CurlDownload `
-        -Uri $ApplicationInstallerUri `
-        -Destination $ApplicationInstaller
+    else {
+        $ApplicationInstallerUri = "https://github.com/$ApplicationRepository/releases/download/v$ApplicationVersion/$ApplicationInstallerName"
+        if ($LatestRelease) {
+            $LatestInstallerAsset = $LatestRelease.assets |
+                Where-Object {
+                    $_.name -match "^VoiceBridge-Studio-[0-9]+\.[0-9]+\.[0-9]+-Windows-x64\.exe$"
+                } |
+                Select-Object -First 1
+            $LatestInstallerSha256 = Get-AssetSha256 -Asset $LatestInstallerAsset
+            if ($LatestInstallerAsset -and $LatestInstallerSha256) {
+                $ApplicationVersion = "$($LatestRelease.tag_name)".TrimStart("v")
+                $ApplicationInstallerName = $LatestInstallerAsset.name
+                $ApplicationInstallerSha256 = $LatestInstallerSha256
+                $ApplicationInstallerUri = $LatestInstallerAsset.browser_download_url
+            }
+        }
+        $ApplicationDownloadDirectory = Join-Path $BootstrapDirectory "downloads"
+        $ApplicationInstaller = Join-Path $ApplicationDownloadDirectory $ApplicationInstallerName
+        Invoke-CurlDownload `
+            -Uri $ApplicationInstallerUri `
+            -Destination $ApplicationInstaller
+    }
 
     $ActualInstallerSha256 = (
         Get-FileHash -LiteralPath $ApplicationInstaller -Algorithm SHA256
@@ -759,7 +924,9 @@ if (-not $VoiceBridgeExecutable -and -not $SkipApplicationInstall) {
     if (-not $VoiceBridgeExecutable) {
         throw "安装程序已结束，但没有找到 VoiceBridge Studio。"
     }
-    Remove-Item -LiteralPath $ApplicationInstaller -Force -ErrorAction SilentlyContinue
+    if (-not $OfflinePayloadDirectory) {
+        Remove-Item -LiteralPath $ApplicationInstaller -Force -ErrorAction SilentlyContinue
+    }
 }
 
 Write-Host ""

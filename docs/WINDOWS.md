@@ -161,53 +161,40 @@ npm run package:win
 - 中文、英文、中英混合硬字幕和文字水印的清理结果；
 - 视频清理下载中断/继续、任务取消、源文件不覆盖和音轨保留。
 
-## 9. 全新 Windows 裸机一键安装
+## 9. 全新 Windows 离线安装
 
-普通用户优先下载并运行图形化安装程序：
-
-```text
-VoiceBridge-Studio-GPU-OneClick-Setup-0.6.3.exe
-```
-
-安装程序会自动请求管理员权限，显示安装进度和 PowerShell 详细日志。
-WSL2 首次启用后，安装程序会询问是否立即重启；登录后自动继续余下步骤。
-
-CMD 和 PowerShell 是图形安装器不可用时的备用入口。
-
-不需要预装 Git、Python、Node.js、CUDA Toolkit、WSL、Docker Desktop
-或 VoiceBridge Studio。下载 `scripts` 目录中的以下两个文件并放在同一
-文件夹，然后双击 CMD：
+项目不再提供运行时联网下载依赖的一键安装器。现在使用完整离线目录：
 
 ```text
-install-windows-bare-metal.cmd
-install-windows-local-gpu.ps1
+offline-bundle/
+├── VoiceBridge-Offline-Setup.exe
+└── payload/
 ```
 
-```bat
-install-windows-bare-metal.cmd
-```
-
-CMD 会调用 Windows 自带的 PowerShell，PowerShell 再通过 UAC 自动申请
-管理员权限。脚本将依次完成：
+完整复制目录后双击 EXE。它会自动申请管理员权限，但只读取同目录的
+`payload`，不会访问网络。安装逻辑将依次完成：
 
 1. 检查 NVIDIA Windows 驱动；
 2. 启用 WSL 和 Virtual Machine Platform；
 3. 注册登录后续装任务，并在需要时提示重启；
-4. 更新 WSL2，并设置默认版本为 2；
-5. 下载、安装和启动 Docker Desktop；
+4. 从本地 MSI 安装 WSL2，并设置默认版本为 2；
+5. 从本地 EXE 安装和启动 Docker Desktop；
 6. 确认 Docker Server OS 为 `linux`；
-7. 下载、合并、校验并解压 SeamlessExpressive checkpoint；
-8. 构建并以 `--gpus all` 启动 Sidecar；
+7. 合并、校验并解压本地 SeamlessExpressive checkpoint；
+8. 导入本地 Sidecar 镜像并以 `--gpus all` 启动；
 9. 检查 CUDA、模型和 HTTP 健康状态；
-10. 查询最新正式 Release，下载并校验 VoiceBridge Studio 安装包，静默安装并启动；
+10. 校验本地 VoiceBridge Studio 安装包，静默安装并启动；
 11. 写入模型目录和 `http://127.0.0.1:8787` 服务地址。
 
-如果只拿到了 CMD，CMD 会尝试从公开 GitHub 仓库下载 PowerShell 主脚本。
-也可以直接执行 PowerShell 主脚本：
+完整目录结构、离线包制作命令和驱动处理见
+[`WINDOWS_OFFLINE.md`](WINDOWS_OFFLINE.md)。
+
+需要诊断时也可以直接执行 PowerShell 主脚本：
 
 ```powershell
 Set-ExecutionPolicy -Scope Process Bypass
-.\scripts\install-windows-local-gpu.ps1
+.\scripts\install-windows-local-gpu.ps1 `
+  -OfflinePayloadDirectory ".\offline-bundle\payload"
 ```
 
 脚本会自行请求管理员权限。首次启用 WSL2 后会要求重启；选择立即重启或
@@ -226,8 +213,9 @@ Set-ExecutionPolicy -Scope Process Bypass
   -ImportModelDirectory "E:\Models\SeamlessExpressive"
 ```
 
-脚本不会自动接受 Docker Desktop 的许可条款。Docker Desktop 第一次启动
-时需要用户在官方窗口中阅读并确认；确认后脚本会继续等待 Linux 引擎。
+离线构建包不会包含一个通用 NVIDIA 驱动，因为驱动必须匹配具体 GPU 和
+整机厂商。目标 Windows 已有兼容驱动时无需额外操作；否则应把正确的官方
+驱动作为 `payload\NVIDIA-Driver.exe` 一并部署。
 
 裸机仍须满足不可由通用脚本代替的硬件条件：x64 Windows 10/11、BIOS/UEFI
 已开启 CPU 虚拟化、NVIDIA GPU、足够的显存和磁盘空间。如果没有 NVIDIA

@@ -2,6 +2,7 @@ node_modules/
 dist/
 build/
 release/
+offline-bundle/
 *.spec
 .playwright-cli/
 output/playwright/

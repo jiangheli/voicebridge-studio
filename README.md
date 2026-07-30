@@ -30,7 +30,7 @@
 - 用户触发的模型安装、暂停与断点续传；
 - 从 `RSXLX/voicebridge-models-private` 私有 Release 安装 SeamlessExpressive 分卷，支持 Range 续传、合并哈希校验和安全解压；
 - “快速直译”独立页面和 SeamlessExpressive Linux GPU sidecar；
-- EXE 内置本机 NVIDIA 管理区，可检测并引导安装 WSL2、Docker Desktop，一键构建和启动本机 sidecar；
+- 提供“启动 EXE + payload 目录”的 Windows 离线部署包，可从本地安装 WSL2、Docker Desktop、模型、应用并导入 sidecar 镜像；
 - “视频清理”页支持中文、英文和中英混合硬字幕，以及手动选区文字水印；
 - 用户显式预下载固定摘要的 VSR 1.4.0 NVIDIA 运行镜像，处理中使用 `--pull never`；
 - 从已有 Hugging Face / ModelScope 仓库目录直接引入模型；
@@ -58,6 +58,10 @@ WSL2 Linux 引擎运行推理，也可以继续连接独立 Linux GPU 主机。�
 运行镜像约 6–7 GB，不集成进 EXE；Docker 按层断点续传，GUI 只在用户点击
 “预下载运行资源”后联网。处理后的 MP4 位于
 `%LOCALAPPDATA%\VoiceBridge\outputs\cleaned`，并重新挂载源视频音轨。
+
+SeamlessExpressive Windows 离线包不把数 GB 资源塞进单个 EXE，而是把
+`VoiceBridge-Offline-Setup.exe` 与经过 SHA-256 校验的 `payload` 放在同一
+目录。详见 [`docs/WINDOWS_OFFLINE.md`](docs/WINDOWS_OFFLINE.md)。
 
 ## 本地开发
 
