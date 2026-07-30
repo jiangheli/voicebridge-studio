@@ -17,6 +17,10 @@ $OutputDirectory = [System.IO.Path]::GetFullPath(
 )
 $PayloadDirectory = Join-Path $OutputDirectory "payload"
 New-Item -ItemType Directory -Force -Path $PayloadDirectory | Out-Null
+Copy-Item `
+    -LiteralPath (Join-Path $RootDirectory "installer\windows-bootstrap\OFFLINE_README.txt") `
+    -Destination (Join-Path $OutputDirectory "使用说明.txt") `
+    -Force
 
 $Downloads = @(
     @{

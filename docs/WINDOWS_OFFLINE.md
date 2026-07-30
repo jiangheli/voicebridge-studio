@@ -5,6 +5,7 @@
 ```text
 offline-bundle/
 ├── VoiceBridge-Offline-Setup.exe
+├── 使用说明.txt
 └── payload/
     ├── offline-manifest.json
     ├── Docker-Desktop-Installer.exe
