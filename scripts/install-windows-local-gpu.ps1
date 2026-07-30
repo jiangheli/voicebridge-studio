@@ -5,6 +5,7 @@ param(
     [switch]$SkipDockerInstall,
     [switch]$SkipApplicationInstall,
     [switch]$InstallerMode,
+    [switch]$SkipSelfUpdate,
     [switch]$KeepDownloadCache
 )
 
@@ -59,6 +60,9 @@ function Get-ForwardedCommand {
     }
     if ($InstallerMode) {
         $Command += " -InstallerMode"
+    }
+    if ($SkipSelfUpdate) {
+        $Command += " -SkipSelfUpdate"
     }
     if ($KeepDownloadCache) {
         $Command += " -KeepDownloadCache"
@@ -169,6 +173,30 @@ function Invoke-CurlDownload {
     }
 }
 
+function Get-LatestVoiceBridgeRelease {
+    try {
+        return Invoke-RestMethod `
+            -Uri "https://api.github.com/repos/$ApplicationRepository/releases/latest" `
+            -Headers @{
+                "Accept" = "application/vnd.github+json"
+                "User-Agent" = "VoiceBridge-Windows-Installer"
+            } `
+            -UseBasicParsing
+    }
+    catch {
+        Write-Host "无法读取最新发布信息，将使用安装器内置版本。" -ForegroundColor Yellow
+        return $null
+    }
+}
+
+function Get-AssetSha256 {
+    param($Asset)
+    if ($Asset -and "$($Asset.digest)" -match "^sha256:([0-9a-fA-F]{64})$") {
+        return $Matches[1].ToLowerInvariant()
+    }
+    return ""
+}
+
 function Merge-BinaryFiles {
     param(
         [Parameter(Mandatory = $true)][string[]]$Sources,
@@ -276,6 +304,52 @@ if (
 ) {
     Copy-Item -LiteralPath $PSCommandPath -Destination $ResumeScriptPath -Force
 }
+
+$LatestRelease = Get-LatestVoiceBridgeRelease
+if (-not $SkipSelfUpdate -and $LatestRelease) {
+    $LogicAsset = $LatestRelease.assets |
+        Where-Object { $_.name -eq "VoiceBridge-Windows-Install-Logic.ps1" } |
+        Select-Object -First 1
+    $LogicSha256 = Get-AssetSha256 -Asset $LogicAsset
+    if ($LogicAsset -and $LogicSha256) {
+        $LogicDirectory = Join-Path $BootstrapDirectory "updates\$($LatestRelease.tag_name)"
+        $LatestLogicPath = Join-Path $LogicDirectory "install-windows-local-gpu.ps1"
+        $NeedsLogicDownload = $true
+        if (Test-Path -LiteralPath $LatestLogicPath -PathType Leaf) {
+            $CachedLogicSha256 = (
+                Get-FileHash -LiteralPath $LatestLogicPath -Algorithm SHA256
+            ).Hash.ToLowerInvariant()
+            $NeedsLogicDownload = $CachedLogicSha256 -ne $LogicSha256
+        }
+        if ($NeedsLogicDownload) {
+            Invoke-CurlDownload `
+                -Uri $LogicAsset.browser_download_url `
+                -Destination $LatestLogicPath
+        }
+        $DownloadedLogicSha256 = (
+            Get-FileHash -LiteralPath $LatestLogicPath -Algorithm SHA256
+        ).Hash.ToLowerInvariant()
+        if ($DownloadedLogicSha256 -ne $LogicSha256) {
+            throw "安装逻辑自动更新校验失败。"
+        }
+        $CurrentLogicSha256 = (
+            Get-FileHash -LiteralPath $PSCommandPath -Algorithm SHA256
+        ).Hash.ToLowerInvariant()
+        if ($CurrentLogicSha256 -ne $DownloadedLogicSha256) {
+            Write-Step "切换到最新安装逻辑 $($LatestRelease.tag_name)"
+            $UpdatedCommand = (
+                Get-ForwardedCommand -ScriptPath $LatestLogicPath
+            ) + " -SkipSelfUpdate"
+            $UpdatedEncoded = ConvertTo-EncodedPowerShellCommand -Command $UpdatedCommand
+            & powershell.exe `
+                -NoProfile `
+                -ExecutionPolicy Bypass `
+                -EncodedCommand $UpdatedEncoded
+            exit $LASTEXITCODE
+        }
+    }
+}
+
 Remove-ItemProperty `
     -Path $ResumeRegistryPath `
     -Name $ResumeRegistryName `
@@ -645,9 +719,23 @@ $SettingsJson = $Settings | ConvertTo-Json -Depth 8
 Write-Step "安装 VoiceBridge Studio"
 $VoiceBridgeExecutable = Get-VoiceBridgeExecutable
 if (-not $VoiceBridgeExecutable -and -not $SkipApplicationInstall) {
+    $ApplicationInstallerUri = "https://github.com/$ApplicationRepository/releases/download/v$ApplicationVersion/$ApplicationInstallerName"
+    if ($LatestRelease) {
+        $LatestInstallerAsset = $LatestRelease.assets |
+            Where-Object {
+                $_.name -match "^VoiceBridge-Studio-[0-9]+\.[0-9]+\.[0-9]+-Windows-x64\.exe$"
+            } |
+            Select-Object -First 1
+        $LatestInstallerSha256 = Get-AssetSha256 -Asset $LatestInstallerAsset
+        if ($LatestInstallerAsset -and $LatestInstallerSha256) {
+            $ApplicationVersion = "$($LatestRelease.tag_name)".TrimStart("v")
+            $ApplicationInstallerName = $LatestInstallerAsset.name
+            $ApplicationInstallerSha256 = $LatestInstallerSha256
+            $ApplicationInstallerUri = $LatestInstallerAsset.browser_download_url
+        }
+    }
     $ApplicationDownloadDirectory = Join-Path $BootstrapDirectory "downloads"
     $ApplicationInstaller = Join-Path $ApplicationDownloadDirectory $ApplicationInstallerName
-    $ApplicationInstallerUri = "https://github.com/$ApplicationRepository/releases/download/v$ApplicationVersion/$ApplicationInstallerName"
     Invoke-CurlDownload `
         -Uri $ApplicationInstallerUri `
         -Destination $ApplicationInstaller

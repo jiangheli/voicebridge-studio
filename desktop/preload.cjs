@@ -11,4 +11,11 @@ contextBridge.exposeInMainWorld("voiceBridge", {
   installPrerequisite: (kind) => ipcRenderer.invoke("voicebridge:install-prerequisite", kind),
   startLocalGpu: (modelPath) => ipcRenderer.invoke("voicebridge:start-local-gpu", { modelPath }),
   stopLocalGpu: () => ipcRenderer.invoke("voicebridge:stop-local-gpu"),
+  getUpdateStatus: () => ipcRenderer.invoke("voicebridge:get-update-status"),
+  checkForUpdates: () => ipcRenderer.invoke("voicebridge:check-for-updates"),
+  onUpdateStatus: (listener) => {
+    const handler = (_event, status) => listener(status);
+    ipcRenderer.on("voicebridge:update-status", handler);
+    return () => ipcRenderer.removeListener("voicebridge:update-status", handler);
+  },
 });

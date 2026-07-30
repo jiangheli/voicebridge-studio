@@ -4,6 +4,10 @@ on:
   workflow_dispatch:
   push:
     branches: ["main", "codex/**"]
+    tags: ["v*"]
+
+permissions:
+  contents: write
 
 jobs:
   package:
@@ -22,9 +26,31 @@ jobs:
       - run: python -m pip install -r server/requirements.txt pytest httpx
       - run: npm run test:api
       - run: npm run test:desktop
-      - run: npm run package:win
+      - name: Package Windows application
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        run: npm run package:win
+      - name: Publish Windows update
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        run: npm run release:win
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Attach installer logic to release
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        shell: powershell
+        run: |
+          Copy-Item scripts\install-windows-local-gpu.ps1 `
+            release\VoiceBridge-Windows-Install-Logic.ps1
+          gh release upload $env:GITHUB_REF_NAME `
+            release\VoiceBridge-Windows-Install-Logic.ps1 `
+            --clobber
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/upload-artifact@v4
         with:
           name: VoiceBridge-Windows
-          path: release/*.exe
+          path: |
+            release/*.exe
+            release/*.yml
+            release/*.blockmap
+            release/VoiceBridge-Windows-Install-Logic.ps1
           if-no-files-found: error

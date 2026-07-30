@@ -1,4 +1,5 @@
 const { app, BrowserWindow, dialog, ipcMain, shell } = require("electron");
+const { autoUpdater } = require("electron-updater");
 const { spawn } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -8,11 +9,13 @@ const {
   startLocalGpu,
   stopLocalGpu,
 } = require("./local-gpu.cjs");
+const { createUpdateController } = require("./updater.cjs");
 
 const API_PORT = 8765;
 const API_BASE = `http://127.0.0.1:${API_PORT}`;
 let backendProcess = null;
 let mainWindow = null;
+let updateController = null;
 
 function localDataRoot() {
   if (process.env.VOICEBRIDGE_DATA_DIR) return process.env.VOICEBRIDGE_DATA_DIR;
@@ -206,8 +209,35 @@ ipcMain.handle("voicebridge:start-local-gpu", async (_event, payload) => {
 
 ipcMain.handle("voicebridge:stop-local-gpu", async () => stopLocalGpu());
 
-app.whenReady().then(() => {
-  if (hasSingleInstanceLock) return createWindow();
+ipcMain.handle("voicebridge:get-update-status", async () => (
+  updateController
+    ? updateController.getState()
+    : {
+        status: "starting",
+        currentVersion: app.getVersion(),
+        availableVersion: null,
+        percent: 0,
+        message: "更新服务正在启动",
+      }
+));
+
+ipcMain.handle("voicebridge:check-for-updates", async () => {
+  if (!updateController) throw new Error("update_service_not_ready");
+  return updateController.check({ manual: true });
+});
+
+app.whenReady().then(async () => {
+  if (hasSingleInstanceLock) {
+    await createWindow();
+    updateController = createUpdateController({
+      app,
+      autoUpdater,
+      dialog,
+      getMainWindow: () => mainWindow,
+    });
+    updateController.start();
+    return;
+  }
   return undefined;
 }).catch((error) => {
   dialog.showErrorBox("VoiceBridge 启动失败", error instanceof Error ? error.message : String(error));

@@ -154,7 +154,7 @@ npm run package:win
 普通用户优先下载并运行图形化安装程序：
 
 ```text
-VoiceBridge-Studio-GPU-OneClick-Setup-0.5.0.exe
+VoiceBridge-Studio-GPU-OneClick-Setup-0.5.1.exe
 ```
 
 安装程序会自动请求管理员权限，显示安装进度和 PowerShell 详细日志。
@@ -187,7 +187,7 @@ CMD 会调用 Windows 自带的 PowerShell，PowerShell 再通过 UAC 自动申�
 7. 下载、合并、校验并解压 SeamlessExpressive checkpoint；
 8. 构建并以 `--gpus all` 启动 Sidecar；
 9. 检查 CUDA、模型和 HTTP 健康状态；
-10. 下载并校验 VoiceBridge Studio 0.5.0 安装包，静默安装并启动；
+10. 查询最新正式 Release，下载并校验 VoiceBridge Studio 安装包，静默安装并启动；
 11. 写入模型目录和 `http://127.0.0.1:8787` 服务地址。
 
 如果只拿到了 CMD，CMD 会尝试从公开 GitHub 仓库下载 PowerShell 主脚本。
@@ -221,3 +221,17 @@ Set-ExecutionPolicy -Scope Process Bypass
 已开启 CPU 虚拟化、NVIDIA GPU、足够的显存和磁盘空间。如果没有 NVIDIA
 驱动，脚本会打开 NVIDIA 官方页面；按显卡型号安装最新 Windows 驱动并
 重启后，再次双击 CMD 即可继续。
+
+## 10. 自动更新
+
+VoiceBridge Studio 安装版每次启动 15 秒后检查正式更新，之后每 6 小时
+检查一次。发现新版后在后台下载，并显示下载进度；下载完成后可以立即
+重启安装，也可以稍后在退出应用时自动安装。在左侧版本区域点击即可手动
+检查。
+
+更新仅替换应用、内置后端和 Sidecar 源码，不会删除或重复下载用户模型、
+缓存、输出和 `%LOCALAPPDATA%\VoiceBridge\settings.json`。
+
+裸机图形安装器启动时还会查询最新正式 Release。Release 中如果存在经过
+GitHub SHA-256 标记的 `VoiceBridge-Windows-Install-Logic.ps1`，安装器会
+先校验并切换到最新版安装逻辑，然后再安装最新 VoiceBridge 应用。

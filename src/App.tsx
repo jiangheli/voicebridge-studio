@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { fetchReadiness } from "./api";
+import { fetchReadiness, type DesktopUpdateStatus } from "./api";
 import { initialSegments, pipeline } from "./data";
 import { AlertIcon, CheckIcon, ChevronIcon, DownloadIcon, FileIcon, LockIcon, MediaIcon, PauseIcon, PlayIcon, RefreshIcon, SettingsIcon, UploadIcon } from "./icons";
 import { downloadJson, downloadText, loadJobs, saveJobs } from "./storage";
@@ -48,6 +48,7 @@ function App() {
   const [apiOnline, setApiOnline] = useState(false);
   const [subtitleFormat, setSubtitleFormat] = useState<SubtitleFormat>("srt");
   const [subtitleTrack, setSubtitleTrack] = useState<SubtitleTrack>("target");
+  const [updateStatus, setUpdateStatus] = useState<DesktopUpdateStatus | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const active = segments.find((item) => item.id === activeId) ?? segments[0];
@@ -78,6 +79,13 @@ function App() {
   useEffect(() => {
     if (jobs.length) saveJobs(jobs);
   }, [jobs]);
+
+  useEffect(() => {
+    const desktop = window.voiceBridge;
+    if (!desktop) return;
+    void desktop.getUpdateStatus().then(setUpdateStatus);
+    return desktop.onUpdateStatus(setUpdateStatus);
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -279,7 +287,15 @@ function App() {
               else setNotice("开发文档位于项目 docs/DEVELOPMENT.md");
             }}
           ><FileIcon />开发文档 <ChevronIcon /></button>
-          <div className="version">WINDOWS DESKTOP · V0.5</div>
+          <button
+            className="version update-button"
+            type="button"
+            title="点击检查更新"
+            onClick={() => void window.voiceBridge?.checkForUpdates()}
+          >
+            WINDOWS DESKTOP · {updateStatus?.currentVersion ?? "DEV"}
+            <small>{updateStatus?.message ?? "自动更新"}</small>
+          </button>
         </div>
       </aside>
 

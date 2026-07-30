@@ -105,6 +105,23 @@ export interface RuntimeStatus {
   base_runtime_ready: boolean;
 }
 
+export interface DesktopUpdateStatus {
+  status:
+    | "starting"
+    | "idle"
+    | "checking"
+    | "available"
+    | "downloading"
+    | "downloaded"
+    | "up-to-date"
+    | "error"
+    | "unsupported";
+  currentVersion: string;
+  availableVersion: string | null;
+  percent: number;
+  message: string;
+}
+
 declare global {
   interface Window {
     voiceBridge?: {
@@ -120,6 +137,11 @@ declare global {
       ) => Promise<{ launched: boolean; kind: string }>;
       startLocalGpu: (modelPath: string) => Promise<LocalGpuStartResult>;
       stopLocalGpu: () => Promise<{ ok: boolean }>;
+      getUpdateStatus: () => Promise<DesktopUpdateStatus>;
+      checkForUpdates: () => Promise<DesktopUpdateStatus>;
+      onUpdateStatus: (
+        listener: (status: DesktopUpdateStatus) => void,
+      ) => () => void;
     };
   }
 }

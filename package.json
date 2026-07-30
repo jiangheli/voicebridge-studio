@@ -1,7 +1,7 @@
 {
   "name": "voicebridge-studio",
   "private": true,
-  "version": "0.5.0",
+  "version": "0.5.1",
   "type": "module",
   "main": "desktop/main.cjs",
   "scripts": {
@@ -11,14 +11,16 @@
     "build:backend:win": "powershell -ExecutionPolicy Bypass -File scripts/build-backend.ps1",
     "prepare:runtime:win": "powershell -ExecutionPolicy Bypass -File scripts/prepare-runtime.ps1",
     "package:win": "npm run build && npm run build:backend:win && npm run prepare:runtime:win && electron-builder --win nsis --publish never",
+    "release:win": "npm run build && npm run build:backend:win && npm run prepare:runtime:win && electron-builder --win nsis --publish always",
     "preview": "vite preview",
     "test:api": "python -m pytest server -q",
-    "test:desktop": "node --test desktop/test-local-gpu.cjs"
+    "test:desktop": "node --test desktop/test-*.cjs"
   },
   "dependencies": {
     "@fontsource/dm-mono": "^5.3.0",
     "@fontsource/manrope": "^5.3.0",
     "@vitejs/plugin-react": "^4.4.1",
+    "electron-updater": "^6.8.9",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "typescript": "~5.7.2",
@@ -93,6 +95,14 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true
-    }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "jiangheli",
+        "repo": "voicebridge-studio",
+        "releaseType": "release"
+      }
+    ]
   }
 }
