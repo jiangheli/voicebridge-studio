@@ -87,11 +87,18 @@ jobs:
           }
           Copy-Item scripts\install-windows-local-gpu.ps1 `
             release\VoiceBridge-Windows-Install-Logic.ps1
-          gh release view $env:GITHUB_REF_NAME *> $null
-          if ($LASTEXITCODE -ne 0) {
+          $releaseTags = @(
+            gh release list --limit 100 --json tagName |
+              ConvertFrom-Json |
+              ForEach-Object { $_.tagName }
+          )
+          if ($releaseTags -notcontains $env:GITHUB_REF_NAME) {
             gh release create $env:GITHUB_REF_NAME `
               --title "VoiceBridge Studio $env:GITHUB_REF_NAME" `
               --generate-notes
+            if ($LASTEXITCODE -ne 0) {
+              throw "GitHub Release creation failed"
+            }
           }
           gh release upload $env:GITHUB_REF_NAME `
             $installer `
