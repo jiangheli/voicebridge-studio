@@ -11,7 +11,7 @@ RequestExecutionLevel admin
 
 Name "VoiceBridge Studio GPU 一键安装"
 OutFile "${OUTPUT_DIR}\VoiceBridge-Studio-GPU-OneClick-Setup-0.5.0.exe"
-InstallDir "$COMMONAPPDATA\VoiceBridge\Installer"
+InstallDir "$TEMP\VoiceBridgeInstaller"
 ShowInstDetails show
 SetCompressor /SOLID lzma
 
@@ -19,6 +19,7 @@ VIProductVersion "0.5.0.0"
 VIAddVersionKey /LANG=2052 "ProductName" "VoiceBridge Studio GPU 一键安装"
 VIAddVersionKey /LANG=2052 "CompanyName" "VoiceBridge Studio"
 VIAddVersionKey /LANG=2052 "FileDescription" "VoiceBridge Studio、WSL2、Docker Desktop 和 SeamlessExpressive 裸机安装器"
+VIAddVersionKey /LANG=2052 "LegalCopyright" "VoiceBridge Studio contributors"
 VIAddVersionKey /LANG=2052 "FileVersion" "0.5.0"
 VIAddVersionKey /LANG=2052 "ProductVersion" "0.5.0"
 
@@ -65,5 +66,5 @@ DeferRestart:
 SectionEnd
 
 Function .onInit
-    SetShellVarContext current
+    SetShellVarContext all
 FunctionEnd
