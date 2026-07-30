@@ -73,7 +73,7 @@ VSR 模型和 CUDA/Python 依赖不进入安装包。用户在“视频清理”
 结果：
 
 ```text
-release\VoiceBridge-Studio-0.6.0-Windows-x64.exe
+release\VoiceBridge-Studio-0.6.1-Windows-x64.exe
 ```
 
 安装器允许修改程序安装目录。模型不在程序目录内，升级或卸载程序不会自动删除模型目录。
@@ -166,7 +166,7 @@ npm run package:win
 普通用户优先下载并运行图形化安装程序：
 
 ```text
-VoiceBridge-Studio-GPU-OneClick-Setup-0.6.0.exe
+VoiceBridge-Studio-GPU-OneClick-Setup-0.6.1.exe
 ```
 
 安装程序会自动请求管理员权限，显示安装进度和 PowerShell 详细日志。

@@ -43,6 +43,9 @@ jobs:
       - name: Build Windows update
         if: ${{ startsWith(github.ref, 'refs/tags/') }}
         run: npm run release:win
+      - name: Smoke test packaged backend
+        shell: powershell
+        run: scripts\test-packaged-backend.ps1
       - name: Publish verified update assets
         if: ${{ startsWith(github.ref, 'refs/tags/') }}
         shell: powershell

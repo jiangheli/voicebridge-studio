@@ -18,8 +18,12 @@ def main() -> None:
         sys.argv.pop(1)
         github_release_worker_main()
         return
+    # Keep this import explicit so PyInstaller includes the FastAPI application
+    # and all transitive services such as video_cleanup in the packaged EXE.
+    from server.app import app
+
     uvicorn.run(
-        "server.app:app",
+        app,
         host="127.0.0.1",
         port=int(os.getenv("VOICEBRIDGE_API_PORT", "8765")),
         log_level=os.getenv("VOICEBRIDGE_LOG_LEVEL", "info"),

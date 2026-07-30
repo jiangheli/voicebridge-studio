@@ -179,7 +179,7 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(
     title="VoiceBridge API",
-    version="0.6.0",
+    version="0.6.1",
     description="Local Windows desktop API with explicit, resumable model installation.",
     lifespan=lifespan,
 )

@@ -255,20 +255,33 @@ class VideoCleanupService:
             if self._runtime_process and self._runtime_process.poll() is None:
                 return asdict(self._runtime)
         ready = False
+        docker_ready = False
         docker_error: str | None = None
         if docker:
             try:
-                result = self._run_command(
-                    [docker, "image", "inspect", reference],
+                daemon = self._run_command(
+                    [docker, "info", "--format", "{{json .ServerVersion}}"],
                     capture_output=True,
                     text=True,
                     timeout=15,
                     check=False,
                     creationflags=_creation_flags(),
                 )
-                ready = result.returncode == 0
+                docker_ready = daemon.returncode == 0
+                if docker_ready:
+                    result = self._run_command(
+                        [docker, "image", "inspect", reference],
+                        capture_output=True,
+                        text=True,
+                        timeout=15,
+                        check=False,
+                        creationflags=_creation_flags(),
+                    )
+                    ready = result.returncode == 0
+                else:
+                    docker_error = "docker_daemon_not_ready"
             except (OSError, subprocess.SubprocessError) as error:
-                docker_error = str(error)
+                docker_error = f"docker_status_failed:{error}"
         with self._lock:
             previous = self._runtime
             state = "ready" if ready else (
@@ -283,7 +296,7 @@ class VideoCleanupService:
                 estimated_size_bytes=IMAGE_SIZES[variant],
                 downloaded_bytes=IMAGE_SIZES[variant] if ready else 0,
                 progress=100 if ready else 0,
-                docker_ready=docker is not None,
+                docker_ready=docker_ready,
                 gpu_name=gpu_name,
                 error=docker_error or (previous.error if state == previous.state else None),
                 log_path=previous.log_path,
@@ -297,7 +310,7 @@ class VideoCleanupService:
         if status["state"] == "ready":
             return status
         docker = _docker_executable()
-        if not docker:
+        if not docker or not status["docker_ready"]:
             raise ValueError("docker_not_ready")
         variant = select_variant(requested, self._detect_gpu_name())
         settings = self._settings_store.load()
