@@ -1,0 +1,36 @@
+name: Blackwell sidecar
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main", "codex/**"]
+    paths:
+      - "services/seamless-sidecar/**"
+      - ".github/workflows/sidecar-blackwell.yml"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build RTX 50 compatible sidecar
+        run: |
+          docker build \
+            --tag voicebridge-seamless-sidecar:0.6.0 \
+            services/seamless-sidecar
+
+      - name: Verify pinned runtime and legacy Seamless API
+        run: |
+          docker run --rm \
+            voicebridge-seamless-sidecar:0.6.0 \
+            python -c \
+            "import fairseq2, fairseq2n, torch; from fairseq2.data import SequenceData; print(torch.__version__, torch.version.cuda, SequenceData); assert torch.__version__.startswith('2.8.'); assert torch.version.cuda == '12.8'"
+
+      - name: Verify sidecar health contract without a GPU
+        run: |
+          docker run --rm \
+            voicebridge-seamless-sidecar:0.6.0 \
+            python -c \
+            "from fastapi.testclient import TestClient; from app import app; data = TestClient(app).get('/health').json(); print(data); assert data['torch_version'].startswith('2.8.'); assert data['cuda_runtime'] == '12.8'"

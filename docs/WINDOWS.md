@@ -109,7 +109,7 @@ release\VoiceBridge-Studio-0.6.3-Windows-x64.exe
 6. 点击“启动本机 GPU 服务”。
 
 首次启动会从 EXE resources 构建固定的
-`voicebridge-seamless-sidecar:0.5.0` 镜像。容器只绑定
+`voicebridge-seamless-sidecar:0.6.0` 镜像。容器只绑定
 `127.0.0.1:8787`，并将 Windows checkpoint 目录只读挂载到
 `/models/SeamlessExpressive`。容器使用 `--restart unless-stopped`，
 Docker Desktop 重启后可恢复服务。

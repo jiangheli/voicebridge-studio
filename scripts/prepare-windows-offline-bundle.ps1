@@ -10,7 +10,7 @@ $ProgressPreference = "SilentlyContinue"
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 $BundleVersion = "0.6.3"
-$ImageName = "voicebridge-seamless-sidecar:0.5.0"
+$ImageName = "voicebridge-seamless-sidecar:0.6.0"
 $RootDirectory = Split-Path -Parent $PSScriptRoot
 $OutputDirectory = [System.IO.Path]::GetFullPath(
     (Join-Path (Get-Location) $OutputDirectory)

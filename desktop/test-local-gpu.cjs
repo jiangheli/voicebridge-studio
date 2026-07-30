@@ -57,6 +57,45 @@ test("Windows status reports a ready local GPU service", async () => {
   assert.equal(status.service_online, true);
 });
 
+test("RTX 50 status requires a CUDA 12.8 sidecar", async () => {
+  const run = async (executable, args) => {
+    const command = [executable, ...args].join(" ");
+    if (command.startsWith("nvidia-smi.exe")) {
+      return {
+        ok: true,
+        stdout: "NVIDIA GeForce RTX 5060 Ti, 576.52, 12.0",
+        stderr: "",
+      };
+    }
+    if (command.startsWith("wsl.exe")) {
+      return { ok: true, stdout: "2", stderr: "" };
+    }
+    if (command.includes("docker.exe version")) {
+      return { ok: true, stdout: "linux", stderr: "" };
+    }
+    if (command.includes("image inspect")) {
+      return { ok: true, stdout: "sha256:image", stderr: "" };
+    }
+    return { ok: true, stdout: "running", stderr: "" };
+  };
+  const status = await probeLocalGpu({
+    platform: "win32",
+    run,
+    fetchImpl: async () => ({
+      ok: true,
+      json: async () => ({
+        model_ready: true,
+        cuda_ready: true,
+        torch_version: "2.2.2",
+        cuda_runtime: "12.1",
+      }),
+    }),
+  });
+  assert.equal(status.compute_capability, "12.0");
+  assert.equal(status.runtime_compatible, false);
+  assert.equal(status.detail, "blackwell_runtime_upgrade_required");
+});
+
 test("start uses argument arrays and read-only model mount", async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "voicebridge-local-gpu-"));
   const model = path.join(root, "SeamlessExpressive");

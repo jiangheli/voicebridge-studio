@@ -76,6 +76,8 @@ export interface LocalGpuStatus {
   supported: boolean;
   nvidia_ready: boolean;
   gpu_name: string | null;
+  driver_version?: string | null;
+  compute_capability?: string | null;
   wsl_ready: boolean;
   docker_ready: boolean;
   image_ready: boolean;
@@ -83,6 +85,10 @@ export interface LocalGpuStatus {
   service_online: boolean;
   model_ready: boolean;
   cuda_ready: boolean;
+  runtime_compatible?: boolean;
+  torch_version?: string | null;
+  cuda_runtime?: string | null;
+  cuda_error?: string | null;
   detail: string;
 }
 

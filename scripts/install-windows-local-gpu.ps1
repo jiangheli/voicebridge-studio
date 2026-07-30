@@ -31,7 +31,7 @@ $RequiredCheckpoints = @(
     "pretssel_melhifigan_wm.pt",
     "pretssel_melhifigan_wm-16khz.pt"
 )
-$ImageName = "voicebridge-seamless-sidecar:0.5.0"
+$ImageName = "voicebridge-seamless-sidecar:0.6.0"
 $ContainerName = "voicebridge-seamless-sidecar"
 $ServiceBase = "http://127.0.0.1:8787"
 $Utf8NoBom = [System.Text.UTF8Encoding]::new($false)

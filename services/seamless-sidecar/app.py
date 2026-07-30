@@ -26,7 +26,7 @@ REQUIRED_FILES = (
 
 app = FastAPI(
     title="VoiceBridge SeamlessExpressive Sidecar",
-    version="0.5.0",
+    version="0.6.0",
 )
 
 
@@ -54,14 +54,34 @@ def health(request: Request) -> dict[str, object]:
 
         cuda_ready = torch.cuda.is_available()
         gpu_name = torch.cuda.get_device_name(0) if cuda_ready else None
-    except Exception:
+        compute_capability = (
+            ".".join(str(item) for item in torch.cuda.get_device_capability(0))
+            if cuda_ready
+            else None
+        )
+        cuda_error = None
+        if cuda_ready:
+            probe = torch.ones(1, device="cuda")
+            probe.add_(1)
+            torch.cuda.synchronize()
+        torch_version = torch.__version__
+        cuda_runtime = torch.version.cuda
+    except Exception as error:
         cuda_ready = False
         gpu_name = None
+        compute_capability = None
+        cuda_error = str(error)[-500:]
+        torch_version = None
+        cuda_runtime = None
     return {
         "status": "ok" if _model_ready() else "model_missing",
         "model_ready": _model_ready(),
         "cuda_ready": cuda_ready,
         "gpu_name": gpu_name,
+        "compute_capability": compute_capability,
+        "torch_version": torch_version,
+        "cuda_runtime": cuda_runtime,
+        "cuda_error": cuda_error,
         "target_languages": ["eng"],
     }
 

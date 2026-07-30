@@ -2,9 +2,11 @@ const { execFile } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
 
-const IMAGE_NAME = "voicebridge-seamless-sidecar:0.5.0";
+const IMAGE_NAME = "voicebridge-seamless-sidecar:0.6.0";
 const CONTAINER_NAME = "voicebridge-seamless-sidecar";
 const SERVICE_BASE = "http://127.0.0.1:8787";
+const SIDECAR_TORCH_VERSION = "2.8.0";
+const SIDECAR_CUDA_RUNTIME = "12.8";
 const REQUIRED_MODEL_FILES = [
   "m2m_expressive_unity.pt",
   "pretssel_melhifigan_wm.pt",
@@ -65,7 +67,10 @@ async function probeLocalGpu(options = {}) {
   const docker = dockerExecutable(platform);
 
   const [nvidia, wsl, dockerVersion, image, container] = await Promise.all([
-    run("nvidia-smi.exe", ["--query-gpu=name", "--format=csv,noheader"]),
+    run("nvidia-smi.exe", [
+      "--query-gpu=name,driver_version,compute_cap",
+      "--format=csv,noheader",
+    ]),
     run("wsl.exe", ["--status"]),
     run(docker, ["version", "--format", "{{.Server.Os}}"]),
     run(docker, ["image", "inspect", IMAGE_NAME, "--format", "{{.Id}}"]),
@@ -80,6 +85,9 @@ async function probeLocalGpu(options = {}) {
   let serviceOnline = false;
   let modelReady = false;
   let cudaReady = false;
+  let torchVersion = SIDECAR_TORCH_VERSION;
+  let cudaRuntime = SIDECAR_CUDA_RUNTIME;
+  let cudaError = null;
   if (container.ok && container.stdout === "running") {
     try {
       const response = await fetchImpl(`${SERVICE_BASE}/health`, {
@@ -90,6 +98,9 @@ async function probeLocalGpu(options = {}) {
         serviceOnline = true;
         modelReady = Boolean(health.model_ready);
         cudaReady = Boolean(health.cuda_ready);
+        torchVersion = health.torch_version ?? torchVersion;
+        cudaRuntime = health.cuda_runtime ?? cudaRuntime;
+        cudaError = health.cuda_error ?? null;
       }
     } catch {
       serviceOnline = false;
@@ -98,10 +109,38 @@ async function probeLocalGpu(options = {}) {
 
   const dockerReady = dockerVersion.ok
     && dockerVersion.stdout.toLowerCase().includes("linux");
+  const gpuFields = nvidia.ok
+    ? nvidia.stdout.split(/\r?\n/)[0].split(",").map((value) => value.trim())
+    : [];
+  const gpuName = gpuFields[0] || null;
+  const driverVersion = gpuFields[1] || null;
+  const computeCapability = gpuFields[2] || null;
+  const blackwell = Boolean(
+    gpuName && /\bRTX\s*50\d{2}\b/i.test(gpuName),
+  ) || Boolean(
+    computeCapability && Number.parseFloat(computeCapability) >= 10,
+  );
+  const runtimeCompatible = !blackwell
+    || Number.parseFloat(cudaRuntime) >= 12.8;
+  const detail = !nvidia.ok
+    ? "nvidia_driver_required"
+    : !wsl.ok
+      ? "wsl2_required"
+      : !dockerReady
+        ? "docker_desktop_required"
+        : !runtimeCompatible
+          ? "blackwell_runtime_upgrade_required"
+          : serviceOnline && modelReady && cudaReady
+            ? "ready"
+            : container.ok && container.stdout === "exited"
+              ? "container_exited"
+              : "runtime_stopped";
   return {
     supported: true,
     nvidia_ready: nvidia.ok && Boolean(nvidia.stdout),
-    gpu_name: nvidia.ok ? nvidia.stdout.split(/\r?\n/)[0] : null,
+    gpu_name: gpuName,
+    driver_version: driverVersion,
+    compute_capability: computeCapability,
     wsl_ready: wsl.ok,
     docker_ready: dockerReady,
     image_ready: image.ok,
@@ -109,15 +148,11 @@ async function probeLocalGpu(options = {}) {
     service_online: serviceOnline,
     model_ready: modelReady,
     cuda_ready: cudaReady,
-    detail: !nvidia.ok
-      ? "nvidia_driver_required"
-      : !wsl.ok
-        ? "wsl2_required"
-        : !dockerReady
-          ? "docker_desktop_required"
-          : serviceOnline && modelReady && cudaReady
-            ? "ready"
-            : "runtime_stopped",
+    runtime_compatible: runtimeCompatible,
+    torch_version: torchVersion,
+    cuda_runtime: cudaRuntime,
+    cuda_error: cudaError,
+    detail,
   };
 }
 
@@ -290,6 +325,8 @@ module.exports = {
   IMAGE_NAME,
   REQUIRED_MODEL_FILES,
   SERVICE_BASE,
+  SIDECAR_CUDA_RUNTIME,
+  SIDECAR_TORCH_VERSION,
   prerequisiteCommands,
   dockerExecutable,
   probeLocalGpu,
