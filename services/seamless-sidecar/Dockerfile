@@ -35,6 +35,12 @@ RUN python -m pip install \
         tbb-devel==2021.8.0 \
         wheel~=0.40
 
+# PyTorch's Conda image puts its GNU libiconv header ahead of the Ubuntu
+# system header. Install the matching shared library so fairseq2n does not
+# compile against libiconv declarations and then link against glibc iconv.
+RUN conda install --yes libiconv \
+    && conda clean --all --force-pkgs-dirs --yes
+
 RUN git clone \
         --branch "${FAIRSEQ2_VERSION}" \
         --depth 1 \
@@ -77,6 +83,9 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         ffmpeg \
         git \
         libsndfile1
+
+RUN conda install --yes libiconv \
+    && conda clean --all --force-pkgs-dirs --yes
 
 COPY --from=fairseq2_builder /wheels /wheels
 RUN python -m pip install \
