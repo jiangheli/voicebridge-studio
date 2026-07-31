@@ -15,13 +15,13 @@ InstallDir "$TEMP\VoiceBridgeOfflineInstaller"
 ShowInstDetails show
 SetCompressor /SOLID lzma
 
-VIProductVersion "0.6.3.0"
+VIProductVersion "0.6.4.0"
 VIAddVersionKey /LANG=2052 "ProductName" "VoiceBridge Studio GPU 离线安装"
 VIAddVersionKey /LANG=2052 "CompanyName" "VoiceBridge Studio"
 VIAddVersionKey /LANG=2052 "FileDescription" "VoiceBridge Studio 完全离线安装入口"
 VIAddVersionKey /LANG=2052 "LegalCopyright" "VoiceBridge Studio contributors"
-VIAddVersionKey /LANG=2052 "FileVersion" "0.6.3"
-VIAddVersionKey /LANG=2052 "ProductVersion" "0.6.3"
+VIAddVersionKey /LANG=2052 "FileVersion" "0.6.4"
+VIAddVersionKey /LANG=2052 "ProductVersion" "0.6.4"
 
 !define MUI_ABORTWARNING
 !define MUI_WELCOMEPAGE_TITLE "安装 VoiceBridge Studio 本机 GPU 环境"

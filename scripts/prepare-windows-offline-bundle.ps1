@@ -9,7 +9,7 @@ $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-$BundleVersion = "0.6.3"
+$BundleVersion = "0.6.4"
 $ImageName = "voicebridge-seamless-sidecar:0.6.0"
 $RootDirectory = Split-Path -Parent $PSScriptRoot
 $OutputDirectory = [System.IO.Path]::GetFullPath(
@@ -45,7 +45,7 @@ $Downloads = @(
     },
     @{
         Name = "VoiceBridge-Studio-Windows-x64.exe"
-        Uri = "https://github.com/jiangheli/voicebridge-studio/releases/download/v0.6.3/VoiceBridge-Studio-0.6.3-Windows-x64.exe"
+        Uri = "https://github.com/jiangheli/voicebridge-studio/releases/download/v$BundleVersion/VoiceBridge-Studio-$BundleVersion-Windows-x64.exe"
         Sha256 = "3dd0ad029a5d012fba96996913f528a0c7eb008ee3e264c0e4884ed1f7164b52"
     },
     @{

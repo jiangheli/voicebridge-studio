@@ -73,7 +73,7 @@ VSR 模型和 CUDA/Python 依赖不进入安装包。用户在“视频清理”
 结果：
 
 ```text
-release\VoiceBridge-Studio-0.6.3-Windows-x64.exe
+release\VoiceBridge-Studio-0.6.4-Windows-x64.exe
 ```
 
 安装器允许修改程序安装目录。模型不在程序目录内，升级或卸载程序不会自动删除模型目录。

@@ -14,7 +14,7 @@ $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-$ApplicationVersion = "0.6.3"
+$ApplicationVersion = "0.6.4"
 $ApplicationRepository = "jiangheli/voicebridge-studio"
 $ApplicationInstallerName = "VoiceBridge-Studio-$ApplicationVersion-Windows-x64.exe"
 $ApplicationInstallerSha256 = "3dd0ad029a5d012fba96996913f528a0c7eb008ee3e264c0e4884ed1f7164b52"
@@ -764,14 +764,14 @@ if (-not $UsingImportedModel) {
 }
 
 Write-Step "准备 SeamlessExpressive Sidecar"
-$SidecarDirectory = Join-Path $DataDirectory "sidecar\0.6.3"
+$SidecarDirectory = Join-Path $DataDirectory "sidecar\$ApplicationVersion"
 New-Item -ItemType Directory -Force -Path $SidecarDirectory | Out-Null
 $SidecarFiles = @("Dockerfile", "requirements.txt", "app.py")
 if (-not $OfflinePayloadDirectory) {
     foreach ($SidecarFile in $SidecarFiles) {
         $SidecarPath = Join-Path $SidecarDirectory $SidecarFile
         if (-not (Test-Path -LiteralPath $SidecarPath -PathType Leaf)) {
-            $SidecarUri = "https://raw.githubusercontent.com/jiangheli/voicebridge-studio/v0.6.3/services/seamless-sidecar/$SidecarFile"
+            $SidecarUri = "https://raw.githubusercontent.com/jiangheli/voicebridge-studio/v$ApplicationVersion/services/seamless-sidecar/$SidecarFile"
             Invoke-CurlDownload -Uri $SidecarUri -Destination $SidecarPath
         }
     }
