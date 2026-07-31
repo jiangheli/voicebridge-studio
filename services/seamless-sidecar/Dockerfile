@@ -85,6 +85,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         --fix-missing \
         --no-install-recommends \
         ffmpeg \
+        gcc \
         git \
         libsndfile1
 
