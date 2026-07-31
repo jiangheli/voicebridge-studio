@@ -49,6 +49,12 @@ RUN git clone \
         --shallow-submodules \
         https://github.com/facebookresearch/fairseq2.git \
         /opt/fairseq2 \
+    && sed -i \
+        's|PyObject \*THPVariable_Wrap(at::TensorBase var);|PyObject *THPVariable_Wrap(const at::TensorBase \\&var);|' \
+        /opt/fairseq2/fairseq2n/python/src/fairseq2n/bindings/type_casters/torch.cc \
+    && grep -Fq \
+        'PyObject *THPVariable_Wrap(const at::TensorBase &var);' \
+        /opt/fairseq2/fairseq2n/python/src/fairseq2n/bindings/type_casters/torch.cc \
     && cmake \
         -S /opt/fairseq2/fairseq2n \
         -B /opt/fairseq2/fairseq2n/build \
