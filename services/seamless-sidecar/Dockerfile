@@ -1,7 +1,8 @@
 ARG PYTORCH_VERSION=2.8.0
 ARG CUDA_VERSION=12.8
+ARG PYTORCH_REGISTRY=dockerproxy.net/pytorch/pytorch
 
-FROM dockerproxy.net/pytorch/pytorch:${PYTORCH_VERSION}-cuda${CUDA_VERSION}-cudnn9-devel AS fairseq2_builder
+FROM ${PYTORCH_REGISTRY}:${PYTORCH_VERSION}-cuda${CUDA_VERSION}-cudnn9-devel AS fairseq2_builder
 
 ARG FAIRSEQ2_VERSION=v0.2.1
 ENV DEBIAN_FRONTEND=noninteractive
@@ -65,7 +66,7 @@ RUN git clone \
     && cd /opt/fairseq2 \
     && python -m pip wheel --no-deps --wheel-dir /wheels .
 
-FROM dockerproxy.net/pytorch/pytorch:${PYTORCH_VERSION}-cuda${CUDA_VERSION}-cudnn9-runtime
+FROM ${PYTORCH_REGISTRY}:${PYTORCH_VERSION}-cuda${CUDA_VERSION}-cudnn9-runtime
 
 ARG SEAMLESS_COMMIT=85199c276e761b2ec09ed8c1a293325df5971548
 ENV DEBIAN_FRONTEND=noninteractive

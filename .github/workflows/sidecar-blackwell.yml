@@ -11,13 +11,14 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
 
       - name: Build RTX 50 compatible sidecar
         run: |
           docker build \
+            --build-arg PYTORCH_REGISTRY=pytorch/pytorch \
             --tag voicebridge-seamless-sidecar:0.6.0 \
             services/seamless-sidecar
 
