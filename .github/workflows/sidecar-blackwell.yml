@@ -35,3 +35,18 @@ jobs:
             voicebridge-seamless-sidecar:0.6.0 \
             python -c \
             "from fastapi.testclient import TestClient; from app import app; data = TestClient(app).get('/health').json(); print(data); assert data['torch_version'].startswith('2.8.'); assert data['cuda_runtime'] == '12.8'"
+
+      - name: Export offline sidecar image
+        run: |
+          docker save voicebridge-seamless-sidecar:0.6.0 \
+            | gzip -1 \
+            > voicebridge-seamless-sidecar-amd64.tar.gz
+
+      - name: Upload offline sidecar image
+        uses: actions/upload-artifact@v4
+        with:
+          name: Blackwell-Sidecar-amd64
+          path: voicebridge-seamless-sidecar-amd64.tar.gz
+          compression-level: 0
+          retention-days: 3
+          if-no-files-found: error

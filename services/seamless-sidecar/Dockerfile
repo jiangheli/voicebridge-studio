@@ -42,6 +42,8 @@ RUN python -m pip install \
 RUN conda install --yes libiconv \
     && conda clean --all --force-pkgs-dirs --yes
 
+COPY fairseq2-torch28.patch /tmp/fairseq2-torch28.patch
+
 RUN git clone \
         --branch "${FAIRSEQ2_VERSION}" \
         --depth 1 \
@@ -49,12 +51,8 @@ RUN git clone \
         --shallow-submodules \
         https://github.com/facebookresearch/fairseq2.git \
         /opt/fairseq2 \
-    && sed -i \
-        's|PyObject \*THPVariable_Wrap(at::TensorBase var);|PyObject *THPVariable_Wrap(const at::TensorBase \\&var);|' \
-        /opt/fairseq2/fairseq2n/python/src/fairseq2n/bindings/type_casters/torch.cc \
-    && grep -Fq \
-        'PyObject *THPVariable_Wrap(const at::TensorBase &var);' \
-        /opt/fairseq2/fairseq2n/python/src/fairseq2n/bindings/type_casters/torch.cc \
+    && git -C /opt/fairseq2 apply --check /tmp/fairseq2-torch28.patch \
+    && git -C /opt/fairseq2 apply /tmp/fairseq2-torch28.patch \
     && cmake \
         -S /opt/fairseq2/fairseq2n \
         -B /opt/fairseq2/fairseq2n/build \

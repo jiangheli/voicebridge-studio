@@ -1,0 +1,13 @@
+diff --git a/fairseq2n/python/src/fairseq2n/bindings/type_casters/torch.cc b/fairseq2n/python/src/fairseq2n/bindings/type_casters/torch.cc
+index 5a711d8..24e014d 100644
+--- a/fairseq2n/python/src/fairseq2n/bindings/type_casters/torch.cc
++++ b/fairseq2n/python/src/fairseq2n/bindings/type_casters/torch.cc
+@@ -21,7 +21,7 @@ struct THPVariable {
+ 
+ extern PyObject *THPVariableClass;
+ 
+-PyObject *THPVariable_Wrap(at::TensorBase var);
++PyObject *THPVariable_Wrap(const at::TensorBase &var);
+ 
+ // Taken from <torch/bindings/Device.h>
+ // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)

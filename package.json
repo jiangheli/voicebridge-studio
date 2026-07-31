@@ -73,6 +73,7 @@
         "to": "sidecar",
         "filter": [
           "Dockerfile",
+          "fairseq2-torch28.patch",
           "requirements.txt",
           "app.py"
         ]
